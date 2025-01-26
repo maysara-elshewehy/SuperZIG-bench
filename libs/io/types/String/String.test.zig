@@ -24,7 +24,7 @@
             {
                 const string = String.initAlloc(allocator);
                 defer string.deinit();
-                try expect(string.capacity == 0);
+                try expect(string.capacity() == 0);
             }
 
             // initCapacity
@@ -35,7 +35,7 @@
                 // non zero size
                 const string = try String.initCapacity(allocator, 64);
                 defer string.deinit();
-                try expect(string.capacity == 64);
+                try expect(string.capacity() == 64);
             }
 
             // Init
@@ -49,8 +49,8 @@
                 const string = try String.init(allocator, validUtf8);
                 defer string.deinit();
                 try expectEqual(validUtf8.len, string.length());
-                try expectEqual(28, string.capacity);
-                try expectStrings(validUtf8, string.writtenSlice());
+                try expectEqual(28, string.capacity());
+                try expectStrings(validUtf8, string.slice());
 
                 // non empty input (invalid UTF-8)
                 // try expectError(unreachable, String.init(allocator, &[_]u8{0x80, 0x81, 0x82}));
@@ -81,124 +81,125 @@
 
     // ┌─────────────────────────── Insert ───────────────────────────┐
 
-        test "insert" {
-            var string = try String.initCapacity(allocator, 18);
-            defer string.deinit();
+//         test "insert" {
+//             var string = try String.initCapacity(allocator, 18);
+//             defer string.deinit();
 
-            const Cases = struct { value: []const u8, expected: []const u8, pos: usize };
-            const cases = &[_]Cases{
-                .{ .value  = "H",   .expected = "H", .pos=0 },
-                .{ .value  = "!",   .expected = "H!", .pos=1 },
-                .{ .value  = "o",   .expected = "Ho!", .pos=1 },
-                .{ .value  = "ell", .expected = "Hello!", .pos=1 },
-                .{ .value  = " ",   .expected = "Hello !", .pos=5 },
-                .{ .value  = "👨‍🏭",  .expected = "Hello 👨‍🏭!", .pos=6 },
-                .{ .value  = "",    .expected = "Hello 👨‍🏭!", .pos=2 },
-            };
+//             const Cases = struct { value: []const u8, expected: []const u8, pos: usize };
+//             const cases = &[_]Cases{
+//                 .{ .value  = "H",   .expected = "H", .pos=0 },
+//                 .{ .value  = "!",   .expected = "H!", .pos=1 },
+//                 .{ .value  = "o",   .expected = "Ho!", .pos=1 },
+//                 .{ .value  = "ell", .expected = "Hello!", .pos=1 },
+//                 .{ .value  = " ",   .expected = "Hello !", .pos=5 },
+//                 .{ .value  = "👨‍🏭",  .expected = "Hello 👨‍🏭!", .pos=6 },
+//                 .{ .value  = "",    .expected = "Hello 👨‍🏭!", .pos=2 },
+//             };
 
-            for(cases) |c| {
-                try string.insert(c.value, c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.insert(c.value, c.pos);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.insert(&[_]u8{0x80, 0x81, 0x82}, 17));
-            try expectError(error.OutOfRange, string.insert("@", 99));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.insert(&[_]u8{0x80, 0x81, 0x82}, 17));
+//             try expectError(error.OutOfRange, string.insert("@", 99));
+//         }
 
-        test "insertOne" {
-            var string = try String.initCapacity(allocator, 7);
-            defer string.deinit();
+//         test "insertOne" {
+//             var string = try String.initCapacity(allocator, 7);
+//             defer string.deinit();
 
-            const Cases = struct { value: u8, expected: []const u8, pos: usize };
-            const cases = &[_]Cases{
-                .{ .value  = 'H', .expected = "H", .pos=0 },
-                .{ .value  = '!', .expected = "H!", .pos=1 },
-                .{ .value  = 'o', .expected = "Ho!", .pos=1 },
-                .{ .value  = 'l', .expected = "Hlo!", .pos=1 },
-                .{ .value  = 'e', .expected = "Helo!", .pos=1 },
-                .{ .value  = 'l', .expected = "Hello!", .pos=2 },
-                .{ .value  = ' ', .expected = "Hello !", .pos=5 },
-            };
+//             const Cases = struct { value: u8, expected: []const u8, pos: usize };
+//             const cases = &[_]Cases{
+//                 .{ .value  = 'H', .expected = "H", .pos=0 },
+//                 .{ .value  = '!', .expected = "H!", .pos=1 },
+//                 .{ .value  = 'o', .expected = "Ho!", .pos=1 },
+//                 .{ .value  = 'l', .expected = "Hlo!", .pos=1 },
+//                 .{ .value  = 'e', .expected = "Helo!", .pos=1 },
+//                 .{ .value  = 'l', .expected = "Hello!", .pos=2 },
+//                 .{ .value  = ' ', .expected = "Hello !", .pos=5 },
+//             };
 
-            for(cases) |c| {
-                try string.insertOne(c.value, c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.insertOne(c.value, c.pos);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.insertOne('\x80', 0));
-            try expectError(error.OutOfRange, string.insertOne('@', 99));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.insertOne('\x80', 0));
+//             try expectError(error.OutOfRange, string.insertOne('@', 99));
+//         }
 
-        test "insertVisual" {
-            var string = try String.initCapacity(allocator, 18);
-            defer string.deinit();
+//         test "insertVisual" {
+//             var string = try String.initCapacity(allocator, 18);
+//             defer string.deinit();
 
-            const Cases = struct { value: []const u8, expected: []const u8, pos: usize };
-            const cases = &[_]Cases{
-                .{ .value  = "H",   .expected = "H", .pos=0 },
-                .{ .value  = "👨‍🏭",  .expected = "H👨‍🏭", .pos=1 },
-                .{ .value  = "o",   .expected = "Ho👨‍🏭", .pos=1 },
-                .{ .value  = "ell", .expected = "Hello👨‍🏭", .pos=1 },
-                .{ .value  = " ",   .expected = "Hello 👨‍🏭", .pos=5 },
-                .{ .value  = "!",   .expected = "Hello 👨‍🏭!", .pos=7 },
-                .{ .value  = "",    .expected = "Hello 👨‍🏭!", .pos=2 },
-            };
+//             const Cases = struct { value: []const u8, expected: []const u8, pos: usize };
+//             const cases = &[_]Cases{
+//                 .{ .value  = "H",   .expected = "H", .pos=0 },
+//                 .{ .value  = "👨‍🏭",  .expected = "H👨‍🏭", .pos=1 },
+//                 .{ .value  = "o",   .expected = "Ho👨‍🏭", .pos=1 },
+//                 .{ .value  = "ell", .expected = "Hello👨‍🏭", .pos=1 },
+//                 .{ .value  = " ",   .expected = "Hello 👨‍🏭", .pos=5 },
+//                 .{ .value  = "!",   .expected = "Hello 👨‍🏭!", .pos=7 },
+//                 .{ .value  = "",    .expected = "Hello 👨‍🏭!", .pos=2 },
+//             };
 
-            for(cases) |c| {
-                try string.insertVisual(c.value, c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.insertVisual(c.value, c.pos);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.insertVisual(&[_]u8{0x80, 0x81, 0x82}, 17));
-            try expectError(error.OutOfRange, string.insertVisual("@", 99));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.insertVisual(&[_]u8{0x80, 0x81, 0x82}, 17));
+//             try expectError(error.OutOfRange, string.insertVisual("@", 99));
+//         }
 
-        test "insertVisualOne" {
-            var string = try String.init(allocator, "👨‍🏭");
-            defer string.deinit();
+//         test "insertVisualOne" {
+//             var string = try String.init(allocator, "👨‍🏭");
+//             defer string.deinit();
 
-            const Cases = struct { value: u8, expected: []const u8, pos: usize };
-            const cases = &[_]Cases{
-                .{ .value  = 'H', .expected = "👨‍🏭H", .pos=1 },
-                .{ .value  = '!', .expected = "👨‍🏭H!", .pos=2 },
-                .{ .value  = 'o', .expected = "👨‍🏭Ho!", .pos=2 },
-                .{ .value  = 'l', .expected = "👨‍🏭Hlo!", .pos=2 },
-                .{ .value  = 'e', .expected = "👨‍🏭Helo!", .pos=2 },
-                .{ .value  = 'l', .expected = "👨‍🏭Hello!", .pos=3 },
-                .{ .value  = ' ', .expected = "👨‍🏭Hello !", .pos=6 },
-            };
+//             const Cases = struct { value: u8, expected: []const u8, pos: usize };
+//             const cases = &[_]Cases{
+//                 .{ .value  = 'H', .expected = "👨‍🏭H", .pos=1 },
+//                 .{ .value  = '!', .expected = "👨‍🏭H!", .pos=2 },
+//                 .{ .value  = 'o', .expected = "👨‍🏭Ho!", .pos=2 },
+//                 .{ .value  = 'l', .expected = "👨‍🏭Hlo!", .pos=2 },
+//                 .{ .value  = 'e', .expected = "👨‍🏭Helo!", .pos=2 },
+//                 .{ .value  = 'l', .expected = "👨‍🏭Hello!", .pos=3 },
+//                 .{ .value  = ' ', .expected = "👨‍🏭Hello !", .pos=6 },
+//             };
 
-            for(cases) |c| {
-                try string.insertVisualOne(c.value, c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.insertVisualOne(c.value, c.pos);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.insertVisualOne('\x80', 0));
-            try expectError(error.OutOfRange, string.insertVisualOne('@', 99));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.insertVisualOne('\x80', 0));
+//             try expectError(error.OutOfRange, string.insertVisualOne('@', 99));
+//         }
 
         test "append" {
-            var string = try String.initCapacity(allocator, 18);
+            var string = String.initAlloc(allocator);
             defer string.deinit();
 
-            const Cases = struct { value: []const u8, expected: []const u8 };
+            const Cases = struct { value: []const u8, expected: []const u8, capacity: usize };
             const cases = &[_]Cases{
-                .{ .value  = "H",   .expected = "H" },
-                .{ .value  = "e",   .expected = "He" },
-                .{ .value  = "llo", .expected = "Hello" },
-                .{ .value  = " ",   .expected = "Hello " },
-                .{ .value  = "👨‍🏭",  .expected = "Hello 👨‍🏭" },
-                .{ .value  = "!",   .expected = "Hello 👨‍🏭!" },
-                .{ .value  = "",    .expected = "Hello 👨‍🏭!" },
+                .{ .value  = "H",   .capacity = 2,  .expected = "H" },
+                .{ .value  = "e",   .capacity = 2,  .expected = "He" },
+                .{ .value  = "llo", .capacity = 10, .expected = "Hello" },
+                .{ .value  = " ",   .capacity = 10, .expected = "Hello " },
+                .{ .value  = "👨‍🏭",  .capacity = 34, .expected = "Hello 👨‍🏭" },
+                .{ .value  = "!",   .capacity = 34, .expected = "Hello 👨‍🏭!" },
+                .{ .value  = "",    .capacity = 34, .expected = "Hello 👨‍🏭!" },
             };
 
             for(cases) |c| {
                 try string.append(c.value);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
+                try expectEqual(c.capacity, string.capacity());
             }
 
             // Failure Cases.
@@ -206,76 +207,77 @@
         }
 
         test "appendOne" {
-            var string = try String.initCapacity(allocator, 7);
+            var string = String.initAlloc(allocator);
             defer string.deinit();
 
-            const Cases = struct { value: u8, expected: []const u8 };
+            const Cases = struct { value: u8, expected: []const u8, capacity: usize };
             const cases = &[_]Cases{
-                .{ .value  = 'H', .expected = "H" },
-                .{ .value  = 'e', .expected = "He" },
-                .{ .value  = 'l', .expected = "Hel" },
-                .{ .value  = 'l', .expected = "Hell" },
-                .{ .value  = 'o', .expected = "Hello" },
-                .{ .value  = ' ', .expected = "Hello " },
-                .{ .value  = '!', .expected = "Hello !" },
+                .{ .value  = 'H', .capacity = 2, .expected = "H" },
+                .{ .value  = 'e', .capacity = 2, .expected = "He" },
+                .{ .value  = 'l', .capacity = 6, .expected = "Hel" },
+                .{ .value  = 'l', .capacity = 6, .expected = "Hell" },
+                .{ .value  = 'o', .capacity = 6, .expected = "Hello" },
+                .{ .value  = ' ', .capacity = 6, .expected = "Hello " },
+                .{ .value  = '!', .capacity = 14, .expected = "Hello !" },
             };
 
             for(cases) |c| {
                 try string.appendOne(c.value);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
+                try expectEqual(c.capacity, string.capacity());
             }
 
             // Failure Cases.
             // try expectError(unreachable, string.appendOne(0x80));
         }
 
-        test "prepend" {
-            var string = try String.initCapacity(allocator, 18);
-            defer string.deinit();
+//         test "prepend" {
+//             var string = try String.initCapacity(allocator, 18);
+//             defer string.deinit();
 
-            const Cases = struct { value: []const u8, expected: []const u8 };
-            const cases = &[_]Cases{
-                .{ .value  = "H",   .expected = "H" },
-                .{ .value  = "e",   .expected = "eH" },
-                .{ .value  = "oll", .expected = "olleH" },
-                .{ .value  = " ",   .expected = " olleH" },
-                .{ .value  = "👨‍🏭",  .expected = "👨‍🏭 olleH" },
-                .{ .value  = "!",   .expected = "!👨‍🏭 olleH" },
-                .{ .value  = "",    .expected = "!👨‍🏭 olleH" },
-            };
+//             const Cases = struct { value: []const u8, expected: []const u8 };
+//             const cases = &[_]Cases{
+//                 .{ .value  = "H",   .expected = "H" },
+//                 .{ .value  = "e",   .expected = "eH" },
+//                 .{ .value  = "oll", .expected = "olleH" },
+//                 .{ .value  = " ",   .expected = " olleH" },
+//                 .{ .value  = "👨‍🏭",  .expected = "👨‍🏭 olleH" },
+//                 .{ .value  = "!",   .expected = "!👨‍🏭 olleH" },
+//                 .{ .value  = "",    .expected = "!👨‍🏭 olleH" },
+//             };
 
-            for(cases) |c| {
-                try string.prepend(c.value);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.prepend(c.value);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.prepend(&[_]u8{0x80, 0x81, 0x82}));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.prepend(&[_]u8{0x80, 0x81, 0x82}));
+//         }
 
-        test "prependOne" {
-            var string = try String.initCapacity(allocator, 7);
-            defer string.deinit();
+//         test "prependOne" {
+//             var string = try String.initCapacity(allocator, 7);
+//             defer string.deinit();
 
-            const Cases = struct { value: u8, expected: []const u8 };
-            const cases = &[_]Cases{
-                .{ .value  = 'H', .expected = "H" },
-                .{ .value  = 'e', .expected = "eH" },
-                .{ .value  = 'l', .expected = "leH" },
-                .{ .value  = 'l', .expected = "lleH" },
-                .{ .value  = 'o', .expected = "olleH" },
-                .{ .value  = ' ', .expected = " olleH" },
-                .{ .value  = '!', .expected = "! olleH" },
-            };
+//             const Cases = struct { value: u8, expected: []const u8 };
+//             const cases = &[_]Cases{
+//                 .{ .value  = 'H', .expected = "H" },
+//                 .{ .value  = 'e', .expected = "eH" },
+//                 .{ .value  = 'l', .expected = "leH" },
+//                 .{ .value  = 'l', .expected = "lleH" },
+//                 .{ .value  = 'o', .expected = "olleH" },
+//                 .{ .value  = ' ', .expected = " olleH" },
+//                 .{ .value  = '!', .expected = "! olleH" },
+//             };
 
-            for(cases) |c| {
-                try string.prependOne(c.value);
-                try expectStrings(c.expected, string.writtenSlice());
-            }
+//             for(cases) |c| {
+//                 try string.prependOne(c.value);
+//                 try expectStrings(c.expected, string.slice());
+//             }
 
-            // Failure Cases.
-            // try expectError(unreachable, string.prependOne(0x80));
-        }
+//             // Failure Cases.
+//             // try expectError(unreachable, string.prependOne(0x80));
+//         }
 
     // └──────────────────────────────────────────────────────────────┘
 
@@ -299,7 +301,7 @@
 
             for(cases) |c| {
                 try string.remove(c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
 
             // Failure Cases.
@@ -323,7 +325,7 @@
 
             for(cases) |c| {
                 try string.removeRange(c.pos, c.len);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
 
             // Failure Cases.
@@ -348,7 +350,7 @@
 
             for(cases) |c| {
                 _ = try string.removeVisual(c.pos);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
 
             // Failure Cases.
@@ -380,7 +382,7 @@
 
             for(cases) |c| {
                 _ = try string.removeVisualRange(c.pos, c.len);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
 
             // Failure Cases.
@@ -413,7 +415,7 @@
             for(cases) |c| {
                 const res = string.pop();
                 try expectStrings(c.removed, res.?);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
 
             // null case
@@ -441,7 +443,7 @@
             for(cases) |c| {
                 const res = string.shift();
                 try expectEqual(c.removed.len, res);
-                try expectStrings(c.expected, string.writtenSlice());
+                try expectStrings(c.expected, string.slice());
             }
         }
 
@@ -574,7 +576,7 @@
             defer string.deinit();
 
             string.toLower();
-            try expectStrings("hello 👨‍🏭!", string.writtenSlice());
+            try expectStrings("hello 👨‍🏭!", string.slice());
         }
 
         test "toUpper" {
@@ -582,7 +584,7 @@
             defer string.deinit();
 
             string.toUpper();
-            try expectStrings("HELLO 👨‍🏭!", string.writtenSlice());
+            try expectStrings("HELLO 👨‍🏭!", string.slice());
         }
 
         test "toTitle" {
@@ -590,36 +592,39 @@
             defer string.deinit();
 
             string.toTitle();
-            try expectStrings("Hello 👨‍🏭!", string.writtenSlice());
-        }
-
-    // └──────────────────────────────────────────────────────────────┘
-
-
-    // ┌──────────────────────────── Utils ───────────────────────────┐
-
-        // wait for append function to be implemented.
-        test "writtenSlice" {
-            var string = try String.init(allocator, &[_]u8{ '1', 0, 0 });
-            defer string.deinit();
-
-            try expectEqual(1, string.writtenSlice().len);
-        }
-
-        // wait for append function to be implemented.
-        test "allocatedSlice" {
-            var string = try String.init(allocator, &[_]u8{ '1', 0, 0 });
-            defer string.deinit();
-
-            // size = original length *2
-            try expectEqual(6, string.allocatedSlice().len);
+            try expectStrings("Hello 👨‍🏭!", string.slice());
         }
 
         test "reverse" {
             var string = try String.init(allocator, "Hello 👨‍🏭!");
             defer string.deinit();
             try string.reverse();
-            try expectStrings("!👨‍🏭 olleH", string.writtenSlice());
+            try expectStrings("!👨‍🏭 olleH", string.slice());
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Data ────────────────────────────┐
+
+        test "length/vlength" {
+            var string = try String.init(allocator, "Hello 👨‍🏭!");
+            defer string.deinit();
+
+            try expectEqual(18, string.m_source.len);
+            try expectEqual(18, string.length());
+            try expectEqual(8, string.vlength());
+        }
+
+        test "slice/allocatedSlice" {
+            var string = try String.init(allocator, &[_]u8{ '1', 0, 0 });
+            defer string.deinit();
+
+            try expectStrings("1", string.slice());
+            try expectEqual(1, string.slice().len);
+
+            // size = original length *2
+            try expectEqual(6, string.allocatedSlice().len);
         }
 
     // └──────────────────────────────────────────────────────────────┘

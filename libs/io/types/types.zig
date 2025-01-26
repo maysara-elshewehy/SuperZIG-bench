@@ -10,7 +10,7 @@
     pub const String = @import("./String/String.zig").String;
 
     /// Unmanaged dynamic array of `UTF-8` bytes.
-    pub const uString = @import("./uString/uString.zig").uString;
+    pub const uString = @import("./String/String.zig").uString;
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -22,7 +22,7 @@
         _ = @import("./Viewer/Viewer.test.zig");
         _ = @import("./Buffer/Buffer.test.zig");
         _ = @import("./String/String.test.zig");
-        _ = @import("./uString/uString.test.zig");
+        _ = @import("./String/uString.test.zig");
     }
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝

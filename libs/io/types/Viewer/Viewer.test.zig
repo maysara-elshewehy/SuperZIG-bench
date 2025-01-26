@@ -25,7 +25,7 @@
             // non empty input (valid UTF-8)
             const validUtf8: []const u8 = "Hello, 世界!";
             const buffer = try Viewer.init(validUtf8);
-            try expectStrings(validUtf8, buffer.source[0..]);
+            try expectStrings(validUtf8, buffer.m_source[0..]);
 
             // non empty input (invalid UTF-8)
             // try expectError(unreachable, Viewer.init(&[_]u8{0x80, 0x81, 0x82}));
@@ -159,10 +159,10 @@
 
     // ┌──────────────────────────── Utils ───────────────────────────┐
 
-        test "writtenSlice" {
+        test "slice" {
             const txt = &[_]u8{ '1', 0, 0 };
             const viewer = try Viewer.init(txt);
-            try expectStrings("1", viewer.writtenSlice());
+            try expectStrings("1", viewer.slice());
         }
 
     // └──────────────────────────────────────────────────────────────┘

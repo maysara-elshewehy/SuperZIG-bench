@@ -24,10 +24,10 @@
             // ┌─────────────────────────── Fields ───────────────────────────┐
 
                 /// The mutable UTF-8 encoded bytes.
-                source: [array_size]u8 = .{0} ** array_size,
+                m_source: [array_size]u8 = .{0} ** array_size,
 
                 /// The number of written bytes to `source`.
-                length: usize = 0,
+                m_length: usize = 0,
 
             // └──────────────────────────────────────────────────────────────┘
 
@@ -43,8 +43,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place **_if `slice` length is greater than 0_.**
                 pub fn insert(self: *Self, slice: []const u8, pos: usize) insertError!void {
-                    try Bytes.insert(&self.source, slice, self.length, pos);
-                    self.length += slice.len;
+                    try Bytes.insert(&self.m_source, slice, self.m_length, pos);
+                    self.m_length += slice.len;
                 }
 
                 /// Inserts a `byte` into the `Buffer` instance at the specified `position` by **real position**.
@@ -53,8 +53,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn insertOne(self: *Self, byte: u8, pos: usize) insertError!void {
-                    try Bytes.insertOne(&self.source, byte, self.length, pos);
-                    self.length += 1;
+                    try Bytes.insertOne(&self.m_source, byte, self.m_length, pos);
+                    self.m_length += 1;
                 }
 
                 /// Inserts a `slice` into the `Buffer` instance at the specified `visual position`.
@@ -64,8 +64,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place **_if `slice` length is greater than 0_.**
                 pub fn insertVisual(self: *Self, slice: []const u8, pos: usize) insertVisualError!void {
-                    try Bytes.insertVisual(&self.source, slice, self.length, pos);
-                    self.length += slice.len;
+                    try Bytes.insertVisual(&self.m_source, slice, self.m_length, pos);
+                    self.m_length += slice.len;
                 }
 
                 /// Inserts a `byte` into the `Buffer` instance at the specified `visual position`.
@@ -75,8 +75,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn insertVisualOne(self: *Self, byte: u8, pos: usize) insertVisualError!void {
-                    try Bytes.insertVisualOne(&self.source, byte, self.length, pos);
-                    self.length += 1;
+                    try Bytes.insertVisualOne(&self.m_source, byte, self.m_length, pos);
+                    self.m_length += 1;
                 }
 
                 /// Appends a `slice` into the `Buffer` instance.
@@ -84,8 +84,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place **_if `slice` length is greater than 0_.**
                 pub fn append(self: *Self, slice: []const u8) insertError!void {
-                    try Bytes.append(&self.source, slice, self.length);
-                    self.length += slice.len;
+                    try Bytes.append(&self.m_source, slice, self.m_length);
+                    self.m_length += slice.len;
                 }
 
                 /// Appends a `byte` into the `Buffer` instance.
@@ -93,8 +93,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn appendOne(self: *Self, byte: u8) insertError!void {
-                    try Bytes.appendOne(&self.source, byte, self.length);
-                    self.length += 1;
+                    try Bytes.appendOne(&self.m_source, byte, self.m_length);
+                    self.m_length += 1;
                 }
 
                 /// Prepends a `slice` into the `Buffer` instance.
@@ -102,8 +102,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place **_if `slice` length is greater than 0_.**
                 pub fn prepend(self: *Self, slice: []const u8) insertError!void {
-                    try Bytes.prepend(&self.source, slice, self.length);
-                    self.length += slice.len;
+                    try Bytes.prepend(&self.m_source, slice, self.m_length);
+                    self.m_length += slice.len;
                 }
 
                 /// Prepends a `byte` into the `Buffer` instance.
@@ -111,8 +111,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn prependOne(self: *Self, byte: u8) insertError!void {
-                    try Bytes.prependOne(&self.source, byte, self.length);
-                    self.length += 1;
+                    try Bytes.prependOne(&self.m_source, byte, self.m_length);
+                    self.m_length += 1;
                 }
 
             // └──────────────────────────────────────────────────────────────┘
@@ -128,8 +128,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn remove(self: *Self, pos: usize) removeError!void {
-                    try Bytes.remove(&self.source, self.length, pos);
-                    self.length -= 1;
+                    try Bytes.remove(&self.m_source, self.m_length, pos);
+                    self.m_length -= 1;
                 }
 
                 /// Removes a `range` of bytes from the `Buffer` instance.
@@ -138,8 +138,8 @@
                 ///
                 /// Modifies the `Buffer` instance in place.
                 pub fn removeRange(self: *Self, pos: usize, len: usize) removeError!void {
-                    try Bytes.removeRange(&self.source, self.length, pos, len);
-                    self.length -= len;
+                    try Bytes.removeRange(&self.m_source, self.m_length, pos, len);
+                    self.m_length -= len;
                 }
 
                 /// Removes a byte from the `Buffer` instance by the `visual position`.
@@ -148,8 +148,8 @@
                 ///
                 /// Returns the removed slice.
                 pub fn removeVisual(self: *Self, pos: usize) removeVisualError![]const u8 {
-                    const removed_slice = try Bytes.removeVisual(&self.source, self.length, pos);
-                    self.length -= removed_slice.len;
+                    const removed_slice = try Bytes.removeVisual(&self.m_source, self.m_length, pos);
+                    self.m_length -= removed_slice.len;
                     return removed_slice;
                 }
 
@@ -159,26 +159,26 @@
                 ///
                 /// Returns the removed slice.
                 pub fn removeVisualRange(self: *Self, pos: usize, len: usize) removeVisualError![]const u8 {
-                    const removed_slice = try Bytes.removeVisualRange(&self.source, self.length, pos, len);
-                    self.length -= removed_slice.len;
+                    const removed_slice = try Bytes.removeVisualRange(&self.m_source, self.m_length, pos, len);
+                    self.m_length -= removed_slice.len;
                     return removed_slice;
                 }
 
                 /// Removes the last grapheme cluster at the `Buffer` instance,
                 /// Returns the removed slice.
                 pub inline fn pop(self: *Self) ?[]const u8 {
-                    const len = Bytes.pop(self.source[0..self.length]);
+                    const len = Bytes.pop(self.m_source[0..self.m_length]);
                     if(len == 0) return null;
 
-                    self.length -= len;
-                    return self.source[self.length..self.length+len];
+                    self.m_length -= len;
+                    return self.m_source[self.m_length..self.m_length+len];
                 }
 
                 /// Removes the first grapheme cluster at the `Buffer` instance,
                 /// Returns the number of removed bytes.
                 pub inline fn shift(self: *Self) usize {
-                    const len = Bytes.shift(self.source[0..self.length]);
-                    self.length -= len;
+                    const len = Bytes.shift(self.m_source[0..self.m_length]);
+                    self.m_length -= len;
                     return len;
                 }
 
@@ -189,37 +189,37 @@
 
                 /// Finds the `position` of the **first** occurrence of `target`.
                 pub fn find(self: Self, target: []const u8) ?usize {
-                    return Bytes.find(self.source[0..self.length], target);
+                    return Bytes.find(self.m_source[0..self.m_length], target);
                 }
 
                 /// Finds the `visual position` of the **first** occurrence of `target`.
                 pub fn findVisual(self: Self, target: []const u8) !?usize {
-                    return Bytes.findVisual(self.source[0..self.length], target);
+                    return Bytes.findVisual(self.m_source[0..self.m_length], target);
                 }
 
                 /// Finds the `position` of the **last** occurrence of `target`.
                 pub fn rfind(self: Self, target: []const u8) ?usize {
-                    return Bytes.rfind(self.source[0..self.length], target);
+                    return Bytes.rfind(self.m_source[0..self.m_length], target);
                 }
 
                 /// Finds the `visual position` of the **last** occurrence of `target`.
                 pub fn rfindVisual(self: Self, target: []const u8) ?usize {
-                    return Bytes.rfindVisual(self.source[0..self.length], target);
+                    return Bytes.rfindVisual(self.m_source[0..self.m_length], target);
                 }
 
                 /// Returns `true` **if contains `target`**.
                 pub fn includes(self: Self, target: []const u8) bool {
-                    return Bytes.includes(self.source[0..self.length], target);
+                    return Bytes.includes(self.m_source[0..self.m_length], target);
                 }
 
                 /// Returns `true` **if starts with `target`**.
                 pub fn startsWith(self: Self, target: []const u8) bool {
-                    return Bytes.startsWith(self.source[0..self.length], target);
+                    return Bytes.startsWith(self.m_source[0..self.m_length], target);
                 }
 
                 /// Returns `true` **if ends with `target`**.
                 pub fn endsWith(self: Self, target: []const u8) bool {
-                    return Bytes.endsWith(self.source[0..self.length], target);
+                    return Bytes.endsWith(self.m_source[0..self.m_length], target);
                 }
 
             // └──────────────────────────────────────────────────────────────┘
@@ -229,17 +229,17 @@
 
                 /// Converts all (ASCII) letters to lowercase.
                 pub fn toLower(self: *Self) void {
-                    Bytes.toLower(self.source[0..self.length]);
+                    Bytes.toLower(self.m_source[0..self.m_length]);
                 }
 
                 /// Converts all (ASCII) letters to uppercase.
                 pub fn toUpper(self: *Self) void {
-                    Bytes.toUpper(self.source[0..self.length]);
+                    Bytes.toUpper(self.m_source[0..self.m_length]);
                 }
 
                 // Converts all (ASCII) letters to titlecase.
                 pub fn toTitle(self: *Self) void {
-                    Bytes.toTitle(self.source[0..self.length]);
+                    Bytes.toTitle(self.m_source[0..self.m_length]);
                 }
 
             // └──────────────────────────────────────────────────────────────┘
@@ -248,13 +248,13 @@
             // ┌──────────────────────────── Count ───────────────────────────┐
 
                 /// Returns the total number of written bytes, stopping at the first null byte.
-                pub fn countWritten(self: Self) usize {
-                    return self.length;
+                pub fn length(self: Self) usize {
+                    return self.m_length;
                 }
 
-                /// Returns the total number of visual characters, stopping at the first null byte.
-                pub fn countVisual(self: Self) usize {
-                    return Bytes.countVisual(self.source[0..self.length]) catch unreachable;
+                /// Returns the total number of visual characters.
+                pub fn vlength(self: Self) usize {
+                    return Bytes.countVisual(self.m_source[0..self.m_length]) catch unreachable;
                 }
 
             // └──────────────────────────────────────────────────────────────┘
@@ -265,7 +265,7 @@
                 /// Creates an iterator for traversing the UTF-8 bytes.
                 /// - `utf8.Iterator.Error` **_if the initialization failed._**
                 pub fn iterator(self: Self) utf8.Iterator.Error!utf8.Iterator {
-                    return try utf8.Iterator.init(self.source[0..self.length]);
+                    return try utf8.Iterator.init(self.m_source[0..self.m_length]);
                 }
 
             // └──────────────────────────────────────────────────────────────┘
@@ -276,21 +276,21 @@
                 /// Returns a copy of the `Buffer` instance.
                 pub fn clone(self: Self) Self {
                     return .{
-                        .source = Bytes.unsafeInit(array_size, self.source[0..self.length]),
-                        .length = self.length
+                        .m_source = Bytes.unsafeInit(array_size, self.m_source[0..self.m_length]),
+                        .m_length = self.m_length
                     };
                 }
 
                 /// Reverses the order of the characters **_(considering unicode)_**.
                 pub fn reverse(self: *Self) void {
-                    if (self.length == 0) return;
+                    if (self.m_length == 0) return;
                     const original_data = self.clone();
-                    var utf8_iterator = utf8.Iterator.unsafeInit(original_data.source[0..original_data.length]);
-                    var i: usize = self.length;
+                    var utf8_iterator = utf8.Iterator.unsafeInit(original_data.m_source[0..original_data.m_length]);
+                    var i: usize = self.m_length;
 
                     while (utf8_iterator.nextGraphemeCluster()) |gc| {
                         i -= gc.len;
-                        @memcpy(self.source[i..i + gc.len], gc);
+                        @memcpy(self.m_source[i..i + gc.len], gc);
                         if (i == 0) break; // to avoid underflow.
                     }
                 }
@@ -313,8 +313,8 @@
     /// - `initCapacityError.ZeroSize` _if the `size` is 0._
     pub fn initCapacity(comptime size: usize) initCapacityError!Buffer(size) {
         return .{
-            .source = try Bytes.initCapacity(size),
-            .length = 0
+            .m_source = try Bytes.initCapacity(size),
+            .m_length = 0
         };
     }
 
@@ -323,8 +323,8 @@
     /// - `initError.OutOfRange` **_if the length of `value` exceeds `size`._**
     pub fn init(comptime size: usize, value: []const u8) initError!Buffer(size) {
         return .{
-            .source = try Bytes.init(size, value),
-            .length = Bytes.countWritten(value)
+            .m_source = try Bytes.init(size, value),
+            .m_length = Bytes.countWritten(value)
         };
     }
 

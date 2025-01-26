@@ -1,13 +1,13 @@
 const std = @import("std");
-const io = @import("./libs/io/io.zig");
+const str = @import("./libs/io/io.zig").types.String;
 const zbench = @import("./libs/zbench//zbench.zig");
 const Allocator = std.mem.Allocator;
 
-const long_str : [1024]u8 = [_]u8{'a'} ** 1024;
-const norm_str : [24]u8 = [_]u8{'a'} ** 24;
+const long_str : [99]u8 = [_]u8{'a'} ** 99;
+const norm_str : [10]u8 = [_]u8{'a'} ** 10;
 
 fn String(allocator: Allocator, comptime num: usize) void {
-    var string = io.types.String.initAlloc(allocator); defer string.deinit();
+    var string = str.initAlloc(allocator); defer string.deinit();
     for (0..num) |_| string.append(long_str[0..]) catch @panic("Error");
 }
 
@@ -33,19 +33,19 @@ pub fn main() !void {
     var bench = zbench.Benchmark.init(std.heap.page_allocator, .{});
     defer bench.deinit();
 
-    try bench.add("ArrayList x1",       ArrayList_x1,       .{});
-    try bench.add("String x1",          String_x1,          .{});
+    // slice
+    try bench.add("std_MANY_x1",        ArrayList_x1,       .{});
+    try bench.add("str_MANY_x1",        String_x1,          .{});
 
-    try bench.add("ArrayList x10",      ArrayList_x10,      .{});
-    try bench.add("String x10",         String_x10,         .{});
+    try bench.add("std_MANY_x10",       ArrayList_x10,      .{});
+    try bench.add("str_MANY_x10",       String_x10,         .{});
 
-    try bench.add("ArrayList x100",     ArrayList_x100,     .{});
-    try bench.add("String x100",        String_x100,        .{});
+    try bench.add("std_MANY_x100",      ArrayList_x100,     .{});
+    try bench.add("str_MANY_x100",      String_x100,        .{});
 
-    try bench.add("ArrayList x1000",    ArrayList_x1000,    .{});
-    try bench.add("String x1000",       String_x1000,       .{});
+    try bench.add("std_MANY_x1000",     ArrayList_x1000,    .{});
+    try bench.add("str_MANY_x1000",     String_x1000,       .{});
 
     try stdout.writeAll("\n");
-
     try bench.run(stdout);
 }

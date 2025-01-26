@@ -186,7 +186,7 @@
         }
 
         /// Removes a `range` of bytes from the `dest`.
-        /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+        /// - `removeError.InvalidPosition` **_if the `pos` is invalid._**
         /// - `removeError.OutOfRange` **_if the `pos` is greater than `dest_wlen`._**
         ///
         /// Modifies `dest` in place.
@@ -398,7 +398,7 @@
             return value.len;
         }
 
-        /// Returns the total number of visual characters, stopping at the first null byte.
+        /// Returns the total number of visual characters.
         /// - `countVisualError.InvalidValue` **_if the `value` is not a valid utf-8 format._**
         pub inline fn countVisual(value: []const u8) countVisualError!usize {
             const len = countWritten(value);

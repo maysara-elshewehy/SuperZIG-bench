@@ -25,9 +25,9 @@
             // non empty input (valid UTF-8)
             const validUtf8: []const u8 = "Hello, 世界!";
             const buffer = try Buffer.init(64, validUtf8);
-            try expect(buffer.length == validUtf8.len);
-            try expect(buffer.source.len == 64);
-            try expectStrings(validUtf8, buffer.source[0..buffer.length]);
+            try expect(buffer.length() == validUtf8.len);
+            try expect(buffer.m_source.len == 64);
+            try expectStrings(validUtf8, buffer.m_source[0..buffer.length()]);
             // try expectError(error.InvalidValue, Buffer.init(64, &[_]u8{0x80, 0x81, 0x82}));
         }
 
@@ -69,7 +69,7 @@
 
             for(cases) |c| {
                 try buffer.insert(c.value, c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -92,7 +92,7 @@
 
             for(cases) |c| {
                 try buffer.insertOne(c.value, c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -115,7 +115,7 @@
 
             for(cases) |c| {
                 try buffer.insertVisual(c.value, c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -140,7 +140,7 @@
 
             for(cases) |c| {
                 try buffer.insertVisualOne(c.value, c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -164,7 +164,7 @@
 
             for(cases) |c| {
                 try buffer.append(c.value);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -187,7 +187,7 @@
 
             for(cases) |c| {
                 try buffer.appendOne(c.value);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -210,7 +210,7 @@
 
             for(cases) |c| {
                 try buffer.prepend(c.value);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -233,7 +233,7 @@
 
             for(cases) |c| {
                 try buffer.prependOne(c.value);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -261,7 +261,7 @@
 
             for(cases) |c| {
                 try buffer.remove(c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -283,7 +283,7 @@
 
             for(cases) |c| {
                 try buffer.removeRange(c.pos, c.len);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -306,7 +306,7 @@
 
             for(cases) |c| {
                 _ = try buffer.removeVisual(c.pos);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -334,7 +334,7 @@
 
             for(cases) |c| {
                 _ = try buffer.removeVisualRange(c.pos, c.len);
-                try expectStrings(c.expected, buffer.source[0..c.expected.len]);
+                try expectStrings(c.expected, buffer.m_source[0..c.expected.len]);
             }
 
             // Failure Cases.
@@ -363,7 +363,7 @@
             for(cases) |c| {
                 const res = buffer.pop();
                 try expectStrings(c.removed, res.?);
-                try expectStrings(c.expected, buffer.source[0..buffer.length]);
+                try expectStrings(c.expected, buffer.m_source[0..buffer.length()]);
             }
 
             // null case
@@ -389,7 +389,7 @@
             for(cases) |c| {
                 const res = buffer.shift();
                 try expectEqual(c.removed.len, res);
-                try expectStrings(c.expected, buffer.source[0..buffer.length]);
+                try expectStrings(c.expected, buffer.m_source[0..buffer.length()]);
             }
         }
 
@@ -506,19 +506,19 @@
         test "toLower" {
             var buffer = try Buffer.init(18, "HeLLo 👨‍🏭!");
             buffer.toLower();
-            try expectStrings("hello 👨‍🏭!", buffer.source[0..buffer.length]);
+            try expectStrings("hello 👨‍🏭!", buffer.m_source[0..buffer.length()]);
         }
 
         test "toUpper" {
             var buffer = try Buffer.init(18, "HeLLo 👨‍🏭!");
             buffer.toUpper();
-            try expectStrings("HELLO 👨‍🏭!", buffer.source[0..buffer.length]);
+            try expectStrings("HELLO 👨‍🏭!", buffer.m_source[0..buffer.length()]);
         }
 
         test "toTitle" {
             var buffer = try Buffer.init(18, "heLLo 👨‍🏭!");
             buffer.toTitle();
-            try expectStrings("Hello 👨‍🏭!", buffer.source[0..buffer.length]);
+            try expectStrings("Hello 👨‍🏭!", buffer.m_source[0..buffer.length()]);
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -529,7 +529,7 @@
         test "reverse" {
             var buffer = try Buffer.init(18, "Hello 👨‍🏭!");
             buffer.reverse();
-            try expectStrings("!👨‍🏭 olleH", buffer.source[0..buffer.length]);
+            try expectStrings("!👨‍🏭 olleH", buffer.m_source[0..buffer.length()]);
         }
 
     // └──────────────────────────────────────────────────────────────┘
