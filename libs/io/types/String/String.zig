@@ -71,7 +71,8 @@
 
         // ┌─────────────────────────── Insert ───────────────────────────┐
 
-            pub const insertError = AllocatorError || error { OutOfRange };
+            pub const insertError       = AllocatorError || error { OutOfRange };
+            pub const insertVisualError = insertError || internal.insertVisualError;
 
             /// Inserts a `slice` into the `String` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
@@ -82,6 +83,36 @@
                 if (_slice.len == 0) return;
                 if (pos > self.m_source.len) return insertError.OutOfRange;
                 try internal.insert(self, self.m_allocator, _slice, pos);
+            }
+
+            /// Inserts a `byte` into the `String` instance at the specified `position` by **real position**.
+            /// - `Allocator.Error` **_if the `allocator` returned an error._**
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn insertOne(self: *Self, byte: u8, pos: usize) insertError!void {
+                if (pos > self.m_source.len) return insertError.OutOfRange;
+                try internal.insertOne(self, self.m_allocator, byte, pos);
+            }
+
+            /// Inserts a `slice` into the `String` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+            ///
+            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            pub fn insertVisual(self: *Self, _slice: []const u8, pos: usize) insertVisualError!void {
+                if (pos > self.m_source.len) return insertVisualError.OutOfRange;
+                try internal.insertVisual(self, self.m_allocator, _slice, pos);
+            }
+
+            /// Inserts a `byte` into the `String` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn insertVisualOne(self: *Self, byte: u8, pos: usize) insertVisualError!void {
+                if (pos > self.m_source.len) return insertVisualError.OutOfRange;
+                try internal.insertVisualOne(self, self.m_allocator, byte, pos);
             }
 
             /// Appends a `slice` into the `String` instance.
@@ -95,7 +126,22 @@
             ///
             /// Modifies the `String` instance in place.
             pub fn appendOne(self: *Self, byte: u8) AllocatorError!void {
-                return internal.appendOne(self, byte);
+                return internal.appendOne(self, self.m_allocator, byte);
+            }
+
+            /// Prepends a `slice` into the `String` instance.
+            ///
+            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            pub fn prepend(self: *Self, _slice: []const u8) AllocatorError!void {
+                if(_slice.len == 0) return;
+                return internal.insert(self, self.m_allocator, _slice, 0);
+            }
+
+            /// Prepends a `byte` into the `String` instance.
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn prependOne(self: *Self, byte: u8) AllocatorError!void {
+                return internal.insertOne(self, self.m_allocator, byte, 0);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -327,7 +373,8 @@
 
         // ┌─────────────────────────── Insert ───────────────────────────┐
 
-            pub const insertError = AllocatorError || error { OutOfRange };
+            pub const insertError       = AllocatorError || error { OutOfRange };
+            pub const insertVisualError = insertError || internal.insertVisualError;
 
             /// Inserts a `slice` into the `String` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
@@ -340,6 +387,36 @@
                 try internal.insert(self, allocator, _slice, pos);
             }
 
+            /// Inserts a `byte` into the `String` instance at the specified `position` by **real position**.
+            /// - `Allocator.Error` **_if the `allocator` returned an error._**
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn insertOne(self: *Self, allocator: Allocator, byte: u8, pos: usize) insertError!void {
+                if (pos > self.m_source.len) return insertError.OutOfRange;
+                try internal.insertOne(self, allocator, byte, pos);
+            }
+
+            /// Inserts a `slice` into the `String` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+            ///
+            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            pub fn insertVisual(self: *Self, allocator: Allocator, _slice: []const u8, pos: usize) insertVisualError!void {
+                if (pos > self.m_source.len) return insertVisualError.OutOfRange;
+                try internal.insertVisual(self, allocator, _slice, pos);
+            }
+
+            /// Inserts a `byte` into the `String` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn insertVisualOne(self: *Self, allocator: Allocator, byte: u8, pos: usize) insertVisualError!void {
+                if (pos > self.m_source.len) return insertVisualError.OutOfRange;
+                try internal.insertVisualOne(self, allocator, byte, pos);
+            }
+
             /// Appends a `slice` into the `String` instance.
             ///
             /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
@@ -350,8 +427,23 @@
             /// Appends a `byte` into the `String` instance.
             ///
             /// Modifies the `String` instance in place.
-            pub fn appendOne(self: *Self, byte: u8) AllocatorError!void {
-                return internal.appendOne(self, byte);
+            pub fn appendOne(self: *Self, allocator: Allocator, byte: u8) AllocatorError!void {
+                return internal.appendOne(self, allocator, byte);
+            }
+
+            /// Prepends a `slice` into the `String` instance.
+            ///
+            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            pub fn prepend(self: *Self, allocator: Allocator, _slice: []const u8) AllocatorError!void {
+                if(_slice.len == 0) return;
+                return internal.insert(self, allocator, _slice, 0);
+            }
+
+            /// Prepends a `byte` into the `String` instance.
+            ///
+            /// Modifies the `String` instance in place.
+            pub fn prependOne(self: *Self, allocator: Allocator, byte: u8) AllocatorError!void {
+                return internal.insertOne(self, allocator, byte, 0);
             }
 
         // └──────────────────────────────────────────────────────────────┘

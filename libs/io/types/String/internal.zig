@@ -53,6 +53,8 @@
 
     // ┌─────────────────────────── Insert ───────────────────────────┐
 
+        pub const insertVisualError = AllocatorError || error { InvalidPosition };
+
         /// Insert slice `items` at index `i` by moving `list[i .. list.len]` to make room.
         /// This operation is O(N).
         /// Invalidates pre-existing pointers to elements at and after `index`.
@@ -64,6 +66,76 @@
             @memcpy(dst, _slice);
         }
 
+        /// Inserts a `byte` into the `String` instance at the specified `position` by **real position**.
+        /// - `insertError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+        ///
+        /// Modifies the `String` instance in place.
+        pub fn insertOne(self: anytype, allocator: Allocator, byte: u8, pos: usize) AllocatorError!void {
+            const dst = try addManyAt(self, allocator ,pos, 1);
+            dst[0] = byte;
+        }
+
+        /// Inserts a `slice` into the `String` instance at the specified `visual position`.
+        /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+        ///
+        /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+        pub fn insertVisual(self: anytype, allocator: Allocator, _slice: []const u8, pos: usize) insertVisualError!void {
+            const real_pos = utf8.utils.getRealPosition(self.slice(), pos) catch return insertVisualError.InvalidPosition;
+            const dst = try addManyAt(self, allocator, real_pos, _slice.len);
+            @memcpy(dst, _slice);
+        }
+
+        /// Inserts a `byte` into the `String` instance at the specified `visual position`.
+        /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
+        ///
+        /// Modifies the `String` instance in place.
+        pub fn insertVisualOne(self: anytype, allocator: Allocator, byte: u8, pos: usize) insertVisualError!void {
+            const real_pos = utf8.utils.getRealPosition(self.slice(), pos) catch return insertVisualError.InvalidPosition;
+            const dst = try addManyAt(self, allocator, real_pos, 1);
+            dst[0] = byte;
+        }
+
+        /// Appends a `slice` into the `String` instance.
+        ///
+        /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+        pub inline fn append(self: anytype, allocator: Allocator, _slice: []const u8) AllocatorError!void {
+            if (_slice.len == 0) return;
+            try ensureUnusedCapacity(self, allocator, _slice.len);
+            unsafeAppend(self, _slice);
+        }
+        inline fn unsafeAppend(self: anytype, _slice: []const u8) void {
+            const old_len = self.m_source.len;
+            std.debug.assert(old_len+_slice.len <= self.m_capacity);
+            self.m_source.len += _slice.len;
+            @memcpy(self.m_source[old_len..][0.._slice.len], _slice);
+        }
+
+        /// Appends a `byte` into the `String` instance.
+        ///
+        /// Modifies the `String` instance in place.
+        pub inline fn appendOne(self: anytype, allocator: Allocator, byte: u8) AllocatorError!void {
+            const new_src_ptr = try addOne(self, allocator);
+            new_src_ptr.* = byte;
+        }
+
+        /// Increase length by 1, returning pointer to the new item.
+        /// The returned pointer becomes invalid when the list resized.
+        inline fn addOne(self: anytype, allocator: Allocator) AllocatorError!*u8 {
+            // This can never overflow because `self.m_source` can never occupy the whole address space
+            try ensureUnusedCapacity(self, allocator, 1);
+            return addOneAssumeCapacity(self);
+        }
+
+        /// Increase length by 1, returning pointer to the new item.
+        /// The returned pointer becomes invalid when the list is resized.
+        /// Never invalidates element pointers.
+        /// Asserts that the list can hold one additional item.
+        inline fn addOneAssumeCapacity(self: anytype) *u8 {
+            std.debug.assert(self.m_source.len < self.m_capacity);
+            self.m_source.len += 1;
+            return &self.m_source[self.m_source.len - 1];
+        }
+
         /// Add `count` new elements at position `index`, which have
         /// `undefined` values. Returns a slice pointing to the newly allocated
         /// elements, which becomes invalid after various `ArrayList`
@@ -72,7 +144,7 @@
         /// Invalidates all pre-existing element pointers if capacity must be
         /// increased to accommodate the new elements.
         /// Asserts that the index is in bounds or equal to the length.
-        pub inline fn addManyAt(self: anytype, allocator: Allocator, index: usize, count: usize) AllocatorError![]u8 {
+        inline fn addManyAt(self: anytype, allocator: Allocator, index: usize, count: usize) AllocatorError![]u8 {
             const new_len = try addOrOom(self.m_source.len, count);
             // const new_len = mulOrOom(_new_len, 2) catch _new_len;
 
@@ -114,7 +186,7 @@
         /// Invalidates pre-existing pointers to elements at and after `index`, but
         /// does not invalidate any before that.
         /// Asserts that the index is in bounds or equal to the length.
-        pub inline fn addManyAtAssumeCapacity(self: anytype, index: usize, count: usize) []u8 {
+        inline fn addManyAtAssumeCapacity(self: anytype, index: usize, count: usize) []u8 {
             const new_len = self.m_source.len + count;
             std.debug.assert(self.m_capacity >= new_len);
             const to_move = self.m_source[index..];
@@ -123,48 +195,6 @@
             const result = self.m_source[index..][0..count];
             @memset(result, undefined);
             return result;
-        }
-
-
-        /// Appends a `slice` into the `String` instance.
-        ///
-        /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
-        pub inline fn append(self: anytype, allocator: Allocator, _slice: []const u8) AllocatorError!void {
-            if (_slice.len == 0) return;
-            try ensureUnusedCapacity(self, allocator, _slice.len);
-            unsafeAppend(self, _slice);
-        }
-        inline fn unsafeAppend(self: anytype, _slice: []const u8) void {
-            const old_len = self.m_source.len;
-            std.debug.assert(old_len+_slice.len <= self.m_capacity);
-            self.m_source.len += _slice.len;
-            @memcpy(self.m_source[old_len..][0.._slice.len], _slice);
-        }
-
-        /// Appends a `byte` into the `String` instance.
-        ///
-        /// Modifies the `String` instance in place.
-        pub inline fn appendOne(self: anytype, byte: u8) AllocatorError!void {
-            const new_src_ptr = try addOne(self);
-            new_src_ptr.* = byte;
-        }
-
-        /// Increase length by 1, returning pointer to the new item.
-        /// The returned pointer becomes invalid when the list resized.
-        inline fn addOne(self: anytype) AllocatorError!*u8 {
-            // This can never overflow because `self.m_source` can never occupy the whole address space
-            try ensureUnusedCapacity(self, self.m_allocator, 1);
-            return addOneAssumeCapacity(self);
-        }
-
-        /// Increase length by 1, returning pointer to the new item.
-        /// The returned pointer becomes invalid when the list is resized.
-        /// Never invalidates element pointers.
-        /// Asserts that the list can hold one additional item.
-        inline fn addOneAssumeCapacity(self: anytype) *u8 {
-            std.debug.assert(self.m_source.len < self.m_capacity);
-            self.m_source.len += 1;
-            return &self.m_source[self.m_source.len - 1];
         }
 
     // └──────────────────────────────────────────────────────────────┘
