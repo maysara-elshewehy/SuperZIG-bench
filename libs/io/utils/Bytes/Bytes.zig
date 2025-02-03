@@ -1,7 +1,9 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
     const std = @import("std");
-    const utf8 = @import("../utf8/utf8.zig");
+    const Unicode = @import("../Unicode/Unicode.zig");
+
+    pub const Allocator = std.mem.Allocator;
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -39,7 +41,7 @@
             return result;
         }
 
-        /// Initializes an array of bytes of a given `size`, filled with null bytes.
+        /// Initializes an array of bytes of a given `size`, filled with null Bytes.
         /// - `initCapacityError.ZeroSize` **_if the `size` is `0`._**
         pub fn initCapacity(comptime array_size: usize) initCapacityError![array_size]u8 {
             return if(array_size == 0) initCapacityError.ZeroSize else unsafeInitCapacity(array_size);
@@ -78,8 +80,6 @@
         /// Inserts a `byte` into `dest` at the specified `position` by **real position**.
         /// - `insertError.OutOfRange` **_if the insertion exceeds the bounds of `dest`._**
         /// - `insertError.OutOfRange` **_if the `pos` is greater than `dest_wlen`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn insertOne(dest: []u8, byte: u8, dest_wlen: usize, pos: usize) insertError!void {
             if (pos > dest_wlen) return insertError.OutOfRange;
             if (dest_wlen+1 > dest.len) return insertError.OutOfRange;
@@ -98,7 +98,7 @@
         ///
         /// Modifies `dest` in place **_if `slice` length is greater than 0_.**
         pub inline fn insertVisual(dest: []u8, slice: []const u8, dest_wlen: usize, pos: usize) insertVisualError!void {
-            const real_pos = utf8.utils.getRealPosition(dest[0..dest_wlen], pos) catch return insertVisualError.InvalidPosition;
+            const real_pos = Unicode.utils.getRealPosition(dest[0..dest_wlen], pos) catch return insertVisualError.InvalidPosition;
             return insert(dest, slice, dest_wlen, real_pos);
         }
 
@@ -106,10 +106,8 @@
         /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
         /// - `insertVisualError.OutOfRange` **_if the insertion exceeds the bounds of `dest`._**
         /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `dest_wlen`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn insertVisualOne(dest: []u8, byte: u8, dest_wlen: usize, pos: usize) insertVisualError!void {
-            const real_pos = utf8.utils.getRealPosition(dest[0..dest_wlen], pos) catch return insertVisualError.InvalidPosition;
+            const real_pos = Unicode.utils.getRealPosition(dest[0..dest_wlen], pos) catch return insertVisualError.InvalidPosition;
             return insertOne(dest, byte, dest_wlen, real_pos);
         }
 
@@ -132,8 +130,6 @@
 
         /// Appends a `byte` into `dest`.
         /// - `insertError.OutOfRange` **_if the insertion exceeds the bounds of `dest`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn appendOne(dest: []u8, byte: u8, dest_wlen: usize) insertError!void {
             if (dest_wlen+1 > dest.len) return insertError.OutOfRange;
 
@@ -156,13 +152,21 @@
 
         /// Prepends a `byte` into `dest`.
         /// - `insertError.OutOfRange` **_if the insertion exceeds the bounds of `dest`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn prependOne(dest: []u8, byte: u8, dest_wlen: usize) insertError!void {
             try insertOne(dest, byte, dest_wlen, 0);
         }
         pub inline fn unsafePrependOne(dest: []u8, byte: u8, dest_wlen: usize) void {
             unsafeInsertOne(dest, byte, dest_wlen, 0);
+        }
+
+        inline fn addManyAtAssumeCapacity(dest: []u8, dest_wlen: usize, index: usize, count: usize) []u8 {
+            const new_len = dest_wlen + count;
+            std.debug.assert(dest.len >= new_len);
+            const to_move = dest[index..];
+            std.mem.copyBackwards(u8, dest[index + count ..], to_move);
+            const result = dest[index..][0..count];
+            @memset(result, undefined);
+            return result;
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -175,8 +179,6 @@
 
         /// Removes a byte from the `dest`.
         /// - `removeError.OutOfRange` **_if the `pos` is greater than `dest_wlen`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn remove(dest: []u8, dest_wlen: usize, pos: usize) removeError!void {
             if (pos > dest_wlen) return removeError.OutOfRange;
             return unsafeRemove(dest, dest_wlen, pos);
@@ -188,8 +190,6 @@
         /// Removes a `range` of bytes from the `dest`.
         /// - `removeError.InvalidPosition` **_if the `pos` is invalid._**
         /// - `removeError.OutOfRange` **_if the `pos` is greater than `dest_wlen`._**
-        ///
-        /// Modifies `dest` in place.
         pub inline fn removeRange(dest: []u8, dest_wlen: usize, pos: usize, len: usize) removeError!void {
             if (pos+len > dest_wlen) return removeError.OutOfRange;
             return unsafeRemoveRange(dest, dest_wlen, pos, len);
@@ -205,8 +205,8 @@
         /// Returns the removed slice.
         pub inline fn removeVisual(dest: []u8, dest_wlen: usize, pos: usize) removeVisualError![]const u8 {
             if (pos > dest_wlen) return removeVisualError.OutOfRange;
-            const real_pos = utf8.utils.getRealPosition(dest[0..dest_wlen], pos) catch return removeVisualError.InvalidPosition;
-            if(utf8.utils.firstGcSlice(dest[real_pos..dest_wlen])) |gc| {
+            const real_pos = Unicode.utils.getRealPosition(dest[0..dest_wlen], pos) catch return removeVisualError.InvalidPosition;
+            if(Unicode.utils.firstGcSlice(dest[real_pos..dest_wlen])) |gc| {
                 unsafeRemoveRange(dest, dest_wlen, real_pos, gc.len);
                 return gc;
             }
@@ -221,17 +221,16 @@
         /// Returns the removed slice.
         pub inline fn removeVisualRange(dest: []u8, dest_wlen: usize, pos: usize, len: usize) removeVisualError![]const u8 {
             if (pos+len > dest_wlen) return removeVisualError.OutOfRange;
-            const real_pos = utf8.utils.getRealPosition(dest[0..dest_wlen], pos) catch return removeVisualError.InvalidPosition;
+            const real_pos = Unicode.utils.getRealPosition(dest[0..dest_wlen], pos) catch return removeVisualError.InvalidPosition;
 
             var real_len : usize = 0;
-            var utf8_iterator = utf8.Iterator.init(dest[real_pos..dest_wlen]) catch return removeVisualError.InvalidPosition;
+            var unicode_iterator = Unicode.Iterator.init(dest[real_pos..dest_wlen]) catch return removeVisualError.InvalidPosition;
             for(0..len) |_| {
-                if(utf8_iterator.nextGraphemeCluster()) |gc| {
-                    real_len += gc.len;
-                } else return removeVisualError.InvalidPosition;
+                if(unicode_iterator.nextGraphemeCluster()) |gc| real_len += gc.len
+                else return removeVisualError.InvalidPosition;
             }
 
-            if(utf8.utils.firstGcSlice(dest[real_pos..dest_wlen])) |gc| {
+            if(Unicode.utils.firstGcSlice(dest[real_pos..dest_wlen])) |gc| {
                 unsafeRemoveRange(dest, dest_wlen, real_pos, real_len);
                 return gc;
             }
@@ -247,14 +246,14 @@
         //
         /// Returns the length of the last grapheme cluster at the `dest`.
         pub inline fn pop(dest: []const u8) usize {
-            const len = (utf8.utils.lastGcSlice(dest[0..]) orelse return 0).len;
+            const len = (Unicode.utils.lastGcSlice(dest[0..]) orelse return 0).len;
             return len;
         }
 
         /// Removes the first grapheme cluster at the `dest`,
-        /// Returns the number of removed bytes.
+        /// Returns the number of removed Bytes.
         pub inline fn shift(dest: []u8) usize {
-            const len = (utf8.utils.firstGcSlice(dest[0..]) orelse return 0).len;
+            const len = (Unicode.utils.firstGcSlice(dest[0..]) orelse return 0).len;
             std.mem.copyForwards(u8, dest[0..], dest[len..]);
             return len;
         }
@@ -270,8 +269,8 @@
         }
 
         /// Finds the `visual position` of the **first** occurrence of `target`.
-        pub inline fn findVisual(dest: []const u8, target: []const u8) !?usize {
-            if(find(dest, target)) |pos| return utf8.utils.getVisualPosition(dest, pos) catch null;
+        pub inline fn findVisual(dest: []const u8, target: []const u8) ?usize {
+            if(find(dest, target)) |pos| return Unicode.utils.getVisualPosition(dest, pos) catch null;
             return null;
         }
 
@@ -282,7 +281,7 @@
 
         /// Finds the `visual position` of the **last** occurrence of `target`.
         pub inline fn rfindVisual(dest: []const u8, target: []const u8) ?usize {
-            if(rfind(dest, target)) |pos| return utf8.utils.getVisualPosition(dest, pos) catch null;
+            if(rfind(dest, target)) |pos| return Unicode.utils.getVisualPosition(dest, pos) catch null;
             return null;
         }
 
@@ -294,14 +293,12 @@
 
         /// Returns `true` **if `dest` starts with `target`**.
         pub inline fn startsWith(dest: []const u8, target: []const u8) bool {
-            const i = std.mem.indexOf(u8, dest[0..dest.len], target);
-            return i == 0;
+            return std.mem.startsWith(u8, dest, target);
         }
 
         /// Returns `true` **if `dest` ends with `target`**.
         pub inline fn endsWith(dest: []const u8, target: []const u8) bool {
-            const i = std.mem.lastIndexOf(u8, dest[0..dest.len], target);
-            return i == (dest.len-target.len);
+            return std.mem.endsWith(u8, dest, target);
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -313,7 +310,7 @@
         pub inline fn toLower(value: []u8) void {
             var i: usize = 0;
             while (i < value.len) {
-                const first_byte_size = std.unicode.utf8ByteSequenceLength(value[i]) catch 1;
+                const first_byte_size = Unicode.utils.lengthOfStartByte(value[i]) catch 1;
                 if (first_byte_size == 1) value[i] = std.ascii.toLower(value[i]);
                 i += first_byte_size;
             }
@@ -323,7 +320,7 @@
         pub inline fn toUpper(value: []u8) void {
             var i: usize = 0;
             while (i < value.len) {
-                const first_byte_size = std.unicode.utf8ByteSequenceLength(value[i]) catch 1;
+                const first_byte_size = Unicode.utils.lengthOfStartByte(value[i]) catch 1;
                 if (first_byte_size == 1) value[i] = std.ascii.toUpper(value[i]);
                 i += first_byte_size;
             }
@@ -352,6 +349,11 @@
 
                 i += 1;
             }
+        }
+
+        /// Reverses the order of the Bytes.
+        pub inline fn reverse(value: []u8) void {
+            std.mem.reverse(u8, value);
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -392,6 +394,9 @@
 
     // ┌──────────────────────────── Count ───────────────────────────┐
 
+        pub const countVisualError = error { InvalidValue };
+
+
         /// Returns the total number of written bytes, stopping at the first null byte.
         pub inline fn countWritten(value: []const u8) usize {
             for(0..value.len) |i| if(value[i] == 0) return i;
@@ -399,32 +404,171 @@
         }
 
         /// Returns the total number of visual characters.
-        /// - `countVisualError.InvalidValue` **_if the `value` is not a valid utf-8 format._**
+        /// - `countVisualError.InvalidValue` **_if the `value` is not a valid unicode format._**
         pub inline fn countVisual(value: []const u8) countVisualError!usize {
             const len = countWritten(value);
             var count : usize = 0;
             var i : usize = 0;
             while (i < len) {
-                i += (utf8.utils.firstGcSlice(value[i..len]) orelse return countVisualError.InvalidValue).len;
+                i += (Unicode.utils.firstGcSlice(value[i..len]) orelse return countVisualError.InvalidValue).len;
                 count += 1;
             }
             return count;
         }
-        pub const countVisualError = error { InvalidValue };
-
-    // └──────────────────────────────────────────────────────────────┘
-
-
-    // ┌──────────────────────────── Utils ───────────────────────────┐
 
         /// Returns a slice containing only the written part.
         pub inline fn writtenSlice(value: []const u8) []const u8 {
             return value[0..countWritten(value)];
         }
 
-        /// Reverses the order of the bytes.
-        pub inline fn reverse(value: []u8) void {
-            std.mem.reverse(u8, value);
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Split ───────────────────────────┐
+
+        /// Splits the written portion of the string into substrings separated by the delimiter,
+        /// returning the substring at the specified index.
+        pub inline fn split(dest: []const u8, dest_wlen: usize, delimiters: []const u8, index: usize) ?[]const u8 {
+            var current_index: usize = 0;
+            var start: usize = 0;
+            var i: usize = 0;
+
+            while (i < dest_wlen) {
+                const slice = dest[i..dest_wlen];
+                if (Unicode.utils.firstGcSlice(slice)) |gc| {
+                    const gc_len = gc.len;
+                    const gc_bytes = dest[i..@min(i + gc_len, dest_wlen)];
+
+                    // Check for delimiter match
+                    if (gc_len == delimiters.len and i + gc_len <= dest_wlen and std.mem.eql(u8, delimiters, gc_bytes)) {
+                        if (current_index == index) return dest[start..i];
+                        current_index += 1;
+                        start = i + gc_len;
+                        i = start;
+                    } else i += gc_len;
+                } else {
+                    // Handle invalid unicode
+                    if (delimiters.len == 1 and i < dest_wlen and dest[i] == delimiters[0]) {
+                        if (current_index == index) return dest[start..i];
+                        current_index += 1;
+                        start = i + 1;
+                        i = start;
+                    } else i += 1;
+                }
+            }
+
+            // Handle final segment
+            if (current_index == index and start <= dest_wlen) return dest[start..dest_wlen];
+
+            return null;
+        }
+
+        /// Splits the written portion of the string into all substrings separated by the delimiter,
+        /// returning an array of slices. Caller must free the returned memory.
+        /// `include_empty` controls whether empty strings are included in the result.
+        pub inline fn splitAll(allocator: Allocator, dest: []const u8, dest_wlen: usize, delimiters: []const u8, include_empty: bool) Allocator.Error![]const []const u8 {
+            var parts = std.ArrayList([]const u8).init(allocator);
+            errdefer parts.deinit();
+
+            var i: usize = 0;
+            while (split(dest, dest_wlen, delimiters, i)) |slice| : (i += 1) {
+                // Include empty strings based on the flag
+                if (include_empty or slice.len > 0) try parts.append(slice);
+            }
+
+            // Handle case where no splits occurred but content exists
+            if (parts.items.len == 0 and dest_wlen > 0) try parts.append(dest[0..dest_wlen]);
+
+            return parts.toOwnedSlice();
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌─────────────────────────── Replace ──────────────────────────┐
+
+        pub const replaceError = error{ OutOfRange };
+
+        /// Replaces all occurrence of a character with another.
+        pub inline fn replaceAllChars(dest: []u8, match: u8, replacement: u8) void {
+            std.mem.replaceScalar(u8, dest, match, replacement);
+        }
+
+        /// Replaces all occurrences of a slice with another.
+        pub inline fn replaceAllSlices(dest: [] u8, match: []const u8, replacement: []const u8) replaceError!usize {
+            const replacementSize = std.mem.replacementSize(u8, dest, match, replacement);
+            if(replacementSize > dest.len) return replaceError.OutOfRange;
+            return unsafeReplace(dest, match, replacement);
+        }
+        pub inline fn unsafeReplace(dest: [] u8, match: []const u8, replacement: []const u8) usize {
+            return std.mem.replace(u8, dest, match, replacement, dest);
+        }
+
+        /// Replaces a range of bytes with another.
+        pub inline fn replaceRange(dest: []u8, dest_wlen: usize, start: usize, len: usize, replacement: []const u8) replaceError!void {
+            const after_range = start + len;
+            const range = dest[start..after_range];
+            if (range.len < replacement.len) {
+                const first = replacement[0..range.len];
+                const rest = replacement[range.len..];
+                @memcpy(range[0..first.len], first);
+                insert(dest, rest, dest_wlen, after_range) catch return replaceError.OutOfRange;
+            } else {
+                unsafeReplaceRange(dest, dest_wlen, start, len, replacement);
+            }
+        }
+
+        inline fn unsafeReplaceRange(dest: []u8, dest_wlen: usize, start: usize, len: usize, replacement: []const u8) void {
+            const after_range = start + len;
+            const range = dest[start..after_range];
+
+            if (range.len == replacement.len)
+                @memcpy(range[0..replacement.len], replacement)
+            else if (range.len < replacement.len) {
+                const first = replacement[0..range.len];
+                const rest = replacement[range.len..];
+                @memcpy(range[0..first.len], first);
+                const dst = addManyAtAssumeCapacity(dest, dest_wlen, after_range, rest.len);
+                @memcpy(dst, rest);
+            } else {
+                const extra = range.len - replacement.len;
+                @memcpy(range[0..replacement.len], replacement);
+                std.mem.copyForwards( u8, dest[after_range - extra ..], dest[after_range..], );
+                @memset(dest[dest_wlen - extra ..], undefined);
+            }
+        }
+
+        /// Replaces a visual range of bytes with another.
+        pub inline fn replaceVisualRange(dest: []u8, dest_wlen: usize, start: usize, len: usize, replacement: []const u8) replaceError!void {
+            var new_len : usize = 0;
+            var iter = Unicode.Iterator.init(dest[start..dest_wlen]) catch unreachable;
+            var i : usize = 0;
+
+            while(iter.nextGraphemeCluster()) |gc| {
+                new_len += gc.len;
+                i += 1;
+                if(i == len) break;
+            }
+
+            try replaceRange(dest, dest_wlen, start, new_len, replacement);
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Utils ───────────────────────────┐
+
+        /// Returns true if the `a` is equal to `b`.
+        pub fn equals(a: []const u8, b: []const u8) bool {
+            if(a.len != b.len) return false;
+            if(a.len == 0) return true;
+
+            return std.mem.eql(u8, a, b);
+        }
+
+        /// Returns true if the `value` is empty.
+        pub fn isEmpty(value: []const u8) bool {
+            return countWritten(value) == 0;
         }
 
     // └──────────────────────────────────────────────────────────────┘

@@ -36,7 +36,7 @@
 
         /// Returns a slice of the first codepoint.
         pub inline fn firstCpSlice(value: []const u8) ?[]const u8 {
-            if(!std.unicode.utf8ValidateSlice(value)) return null;
+            if(!Utf8Validate(value)) return null;
             if(value.len == 0) return null;
             return value[0..lengthOfStartByte(value[0]) catch null];
         }
@@ -67,7 +67,7 @@
 
         /// Returns a slice of the first grapheme cluster.
         pub inline fn firstGcSlice(value: []const u8) ?[]const u8 {
-            if(!std.unicode.utf8ValidateSlice(value)) return null;
+            if(!Utf8Validate(value)) return null;
             if(value.len == 0) return null;
 
             var iterator = std.unicode.Utf8Iterator{ .bytes = value, .i = 0 };
@@ -115,7 +115,7 @@
         pub inline fn lastGcSlice(value: []const u8) ?[]const u8 {
             // TODO: clean this up.
 
-            if(!std.unicode.utf8ValidateSlice(value)) return null;
+            if(!Utf8Validate(value)) return null;
             if(value.len == 0) return null;
 
             // Use lastCp to quickly find the last codepoint in the string
@@ -175,7 +175,7 @@
 
         /// Returns the real position in the array based on the visual position.
         /// - `getRealPositionError.OutOfRange` **_if `visual_pos` is out of range._**
-        /// - `getRealPositionError.InvalidValue` **_if `value` is not valid UTF-8._**
+        /// - `getRealPositionError.InvalidValue` **_if `value` is not valid unicode._**
         pub inline fn getRealPosition(value: []const u8, visual_pos: usize) getRealPositionError!usize {
             if(visual_pos > value.len) return getRealPositionError.OutOfRange;
 
@@ -192,7 +192,7 @@
 
         /// Returns the visual position in the array based on the real position.
         /// - `getVisualPositionError.OutOfRange` **_if `real_pos` is out of range._**
-        /// - `getVisualPositionError.InvalidValue` **_if `value` is not valid UTF-8._**
+        /// - `getVisualPositionError.InvalidValue` **_if `value` is not valid unicode._**
         pub inline fn getVisualPosition(value: []const u8, real_pos: usize) getVisualPositionError!usize {
             if (real_pos > value.len) return getVisualPositionError.OutOfRange;
 
@@ -212,7 +212,8 @@
 
     // ┌──────────────────────────── ----- ───────────────────────────┐
 
-        pub const isValid = std.unicode.utf8ValidateSlice;
+        pub const Utf8Validate = std.unicode.utf8ValidateSlice;
+        pub const Utf8Decode   = std.unicode.utf8Decode;
 
     // └──────────────────────────────────────────────────────────────┘
 

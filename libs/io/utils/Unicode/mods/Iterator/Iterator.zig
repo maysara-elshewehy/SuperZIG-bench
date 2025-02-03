@@ -1,6 +1,5 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    const std = @import("std");
     const utils = @import("../../utils/utils.zig");
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
@@ -9,7 +8,7 @@
 
 // ╔══════════════════════════════════════ CORE ══════════════════════════════════════╗
 
-    /// A _(`grapheme cluster`, `codepoint`)_ iterator for iterating over a slice of bytes.
+    /// A _(`grapheme cluster`, `codepoint`)_ iterator for iterating over a slice of Bytes.
     pub const Iterator = struct {
 
         // ┌──────────────────────────── ---- ────────────────────────────┐
@@ -38,14 +37,14 @@
 
         // ┌────────────────────────── Methods ───────────────────────────┐
 
-            /// Initializes a Iterator with the given input bytes.
-            /// Returns `Error.InvalidValue` **_if the `input_bytes` is not a valid utf8._**
+            /// Initializes a Iterator with the given input Bytes.
+            /// Returns `Error.InvalidValue` **_if the `input_bytes` is not a valid Unicode._**
             pub fn init(input_bytes: []const u8) Error!Self {
-                if(!std.unicode.utf8ValidateSlice(input_bytes)) return Error.InvalidValue;
+                if(!utils.Utf8Validate(input_bytes)) return Error.InvalidValue;
                 return unsafeInit(input_bytes);
             }
 
-            /// Initializes a Iterator with the given input bytes.
+            /// Initializes a Iterator with the given input Bytes.
             pub fn unsafeInit(input_bytes: []const u8) Self {
                 return .{ .input_bytes = input_bytes, .current_index = 0, };
             }
@@ -75,7 +74,7 @@
             /// Decodes and returns the next codepoint and advances the iterator.
             pub fn next(self: *Self) ?u21 {
                 const slice = self.nextSlice() orelse return null;
-                return std.unicode.utf8Decode(slice[0..]) catch null;
+                return utils.Utf8Decode(slice[0..]) catch null;
             }
 
             /// Decodes and returns the next codepoint without advancing the iterator.

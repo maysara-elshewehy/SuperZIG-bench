@@ -1,7 +1,6 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
     const internal = @import("./internal.zig");
-    const Bytes = @import("../../utils/bytes/bytes.zig");
 
     const Iterator = internal.Iterator;
     const Allocator = internal.Allocator;
@@ -13,7 +12,7 @@
 
 // ╔══════════════════════════════════════ CORE ══════════════════════════════════════╗
 
-    /// Managed dynamic utf8 string type.
+    /// Managed dynamic-size string type that supports Unicode.
     pub const String = struct {
 
         // ┌──────────────────────────── ---- ────────────────────────────┐
@@ -28,7 +27,7 @@
             /// Allocator used for memory management.
             m_allocator: Allocator = undefined,
 
-            /// The mutable UTF-8 encoded bytes.
+            /// The mutable unicode encoded Bytes.
             m_source: []u8 = &[_]u8{},
 
             /// The number of bytes that can be written to `m_source`.
@@ -39,19 +38,19 @@
 
         // ┌─────────────────────── Initialization ───────────────────────┐
 
-            pub const initError = internal_initError;
+            pub const initError = internal.initError;
 
             /// Initializes a new `String` instance with the given `allocator` and `value`.
             /// - `initError.ZeroSize` **_if the length of `value` is 0._**
-            /// - `std.mem.Allocator` **_if the allocator returned an error._**
+            /// - `Allocator.Error` **_if the allocator returned an error._**
             pub fn init(allocator: Allocator, value: []const u8) initError!Self {
-                return try internal_init(Self, allocator, value);
+                return internal.init(Self, allocator, value);
             }
 
             /// Initializes a new `String` instance with `allocator` and `size`.
             /// - `initError.ZeroSize` _if the `size` is 0._
             pub fn initCapacity(allocator: Allocator, size: usize) initError!Self {
-                return try internal_initCapacity(Self, allocator, size);
+                return internal.initCapacity(Self, allocator, size);
             }
 
             /// Initializes a new `String` instance with the given `allocator`.
@@ -76,7 +75,7 @@
 
             /// Inserts a `slice` into the `String` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
-            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
             /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
             pub fn insert(self: *Self, _slice: []const u8, pos: usize) insertError!void {
@@ -87,16 +86,14 @@
 
             /// Inserts a `byte` into the `String` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
-            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `String` instance in place.
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn insertOne(self: *Self, byte: u8, pos: usize) insertError!void {
                 if (pos > self.m_source.len) return insertError.OutOfRange;
                 try internal.insertOne(self, self.m_allocator, byte, pos);
             }
 
             /// Inserts a `slice` into the `String` instance at the specified `visual position`.
-            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
             ///
             /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
@@ -106,10 +103,8 @@
             }
 
             /// Inserts a `byte` into the `String` instance at the specified `visual position`.
-            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
-            ///
-            /// Modifies the `String` instance in place.
             pub fn insertVisualOne(self: *Self, byte: u8, pos: usize) insertVisualError!void {
                 if (pos > self.m_source.len) return insertVisualError.OutOfRange;
                 try internal.insertVisualOne(self, self.m_allocator, byte, pos);
@@ -119,29 +114,25 @@
             ///
             /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
             pub fn append(self: *Self, _slice: []const u8) AllocatorError!void {
-                return internal.append(self, self.m_allocator, _slice);
+                try internal.append(self, self.m_allocator, _slice);
             }
 
             /// Appends a `byte` into the `String` instance.
-            ///
-            /// Modifies the `String` instance in place.
             pub fn appendOne(self: *Self, byte: u8) AllocatorError!void {
-                return internal.appendOne(self, self.m_allocator, byte);
+                try internal.appendOne(self, self.m_allocator, byte);
             }
 
             /// Prepends a `slice` into the `String` instance.
             ///
             /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
             pub fn prepend(self: *Self, _slice: []const u8) AllocatorError!void {
-                if(_slice.len == 0) return;
-                return internal.insert(self, self.m_allocator, _slice, 0);
+                if(_slice.len > 0)
+                try internal.insert(self, self.m_allocator, _slice, 0);
             }
 
             /// Prepends a `byte` into the `String` instance.
-            ///
-            /// Modifies the `String` instance in place.
             pub fn prependOne(self: *Self, byte: u8) AllocatorError!void {
-                return internal.insertOne(self, self.m_allocator, byte, 0);
+                try internal.insertOne(self, self.m_allocator, byte, 0);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -153,25 +144,21 @@
             pub const removeVisualError = internal.removeVisualError;
 
             /// Removes a byte from the `uString` instance.
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `uString` instance in place.
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn remove(self: *Self, pos: usize) removeError!void {
                 return internal.remove(self, pos);
             }
 
             /// Removes a `range` of bytes from the `uString` instance.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `uString` instance in place.
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn removeRange(self: *Self, pos: usize, len: usize) removeError!void {
                 return internal.removeRange(self, pos, len);
             }
 
             /// Removes a byte from the `uString` instance by the `visual position`.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
             /// Returns the removed slice.
             pub fn removeVisual(self: *Self, pos: usize) removeVisualError![]const u8 {
@@ -180,7 +167,7 @@
 
             /// Removes a `range` of bytes from the `uString` instance by the `visual position`.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
             /// Returns the removed slice.
             pub fn removeVisualRange(self: *Self, pos: usize, len: usize) removeVisualError![]const u8 {
@@ -194,7 +181,7 @@
             }
 
             /// Removes the first grapheme cluster at the `uString` instance,
-            /// Returns the number of removed bytes.
+            /// Returns the number of removed Bytes.
             pub fn shift(self: *Self) usize {
                 return internal.shift(self);
             }
@@ -210,7 +197,7 @@
             }
 
             /// Finds the `visual position` of the **first** occurrence of `target`.
-            pub fn findVisual(self: Self, target: []const u8) !?usize {
+            pub fn findVisual(self: Self, target: []const u8) ?usize {
                 return internal.findVisual(self, target);
             }
 
@@ -299,10 +286,65 @@
 
         // ┌────────────────────────── Iterator ──────────────────────────┐
 
-            /// Creates an iterator for traversing the UTF-8 bytes.
+            /// Creates an iterator for traversing the unicode bytes.
             /// - `Iterator.Error` **_if the initialization failed._**
             pub fn iterator(self: Self) Iterator.Error!Iterator {
-                return try internal.iterator(self);
+                return internal.iterator(self);
+            }
+
+        // └──────────────────────────────────────────────────────────────┘
+
+
+        // ┌──────────────────────────── Split ───────────────────────────┐
+
+            /// Splits the written portion of the string into substrings separated by the delimiter,
+            /// returning the substring at the specified index.
+            pub fn split(self: Self, delimiters: []const u8, index: usize) ?[]const u8 {
+                return internal.split(self, delimiters, index);
+            }
+
+            /// Splits the written portion of the string into all substrings separated by the delimiter,
+            /// returning an array of slices. Caller must free the returned memory.
+            /// `include_empty` controls whether empty strings are included in the result.
+            pub fn splitAll(self: Self, delimiters: []const u8, include_empty: bool) ![]const []const u8 {
+                return internal.splitAll(self, self.m_allocator, delimiters, include_empty);
+            }
+
+            /// Splits the written portion of the string into substrings separated by the delimiter,
+            /// returning the substring at the specified index as a new `String` instance.
+            pub fn splitToString(self: Self, delimiters: []const u8, index: usize) Allocator.Error!?Self {
+                return internal.splitToString(Self, self, self.m_allocator, delimiters, index);
+            }
+
+            /// Splits the written portion of the string into all substrings separated by the delimiter,
+            /// returning an array of new `String` instances. Caller must free the returned memory.
+            pub fn splitAllToStrings(self: Self, delimiters: []const u8) Allocator.Error![]Self {
+                return internal.splitAllToStrings(Self, self, self.m_allocator, delimiters);
+            }
+
+        // └──────────────────────────────────────────────────────────────┘
+
+
+        // ┌─────────────────────────── Replace ──────────────────────────┐
+
+            /// Replaces all occurrence of a character with another.
+            pub fn replaceAllChars(self: *Self, match: u8, replacement: u8) void {
+                return internal.replaceAllChars(self, match, replacement);
+            }
+
+            /// Replaces all occurrences of a slice with another.
+            pub fn replaceAllSlices(self: *Self, match: []const u8, replacement: []const u8) Allocator.Error!usize {
+                return internal.replaceAllSlices(self, self.m_allocator, match, replacement);
+            }
+
+            /// Replaces a range of bytes with another.
+            pub fn replaceRange(self: anytype, start: usize, len: usize, replacement: []const u8) Allocator.Error!void {
+                return internal.replaceRange(self, self.m_allocator, start, len, replacement);
+            }
+
+            /// Replaces a visual range of bytes with another.
+            pub fn replaceVisualRange(self: anytype, start: usize, len: usize, replacement: []const u8) Allocator.Error!void {
+                return internal.replaceVisualRange(self, self.m_allocator, start, len, replacement);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -312,14 +354,24 @@
 
             /// Returns a copy of the `String` instance.
             pub fn clone(self: Self) AllocatorError!Self {
-                return internal_clone(Self, self, self.m_allocator);
+                return internal.clone(Self, self, self.m_allocator);
+            }
+
+            /// Returns true if the `String` instance equals the given `target`.
+            pub fn equals(self: Self, target: []const u8) bool {
+                return internal.equals(self, target);
+            }
+
+            /// Returns true if the `String` instance is empty.
+            pub fn isEmpty(self: Self) bool {
+                return internal.isEmpty(self);
             }
 
         // └──────────────────────────────────────────────────────────────┘
     };
 
 
-    /// Unmanaged dynamic utf8 string type.
+    /// Unmanaged dynamic-size string type that supports Unicode.
     pub const uString = struct {
 
         // ┌──────────────────────────── ---- ────────────────────────────┐
@@ -334,7 +386,7 @@
             /// Allocator used for memory management.
             m_allocator: Allocator = undefined,
 
-            /// The mutable UTF-8 encoded bytes.
+            /// The mutable unicode encoded Bytes.
             m_source: []u8 = &[_]u8{},
 
             /// The number of bytes that can be written to `source`.
@@ -345,26 +397,32 @@
 
         // ┌─────────────────────── Initialization ───────────────────────┐
 
-            pub const initError = internal_initError;
+            pub const initError = internal.initError;
 
             /// Initializes a new `uString` instance using `allocator` and `value`.
             /// - `initError.ZeroSize` **_if the length of `value` is 0._**
-            /// - `std.mem.Allocator` **_if the allocator returned an error._**
+            /// - `Allocator.Error` **_if the allocator returned an error._**
             pub fn init(allocator: Allocator, value: []const u8) initError!Self {
-                return try internal_init(Self, allocator, value);
+                return internal.init(Self, allocator, value);
             }
 
             /// Initializes a new `uString` instance using `allocator` and `size`.
             /// - `initError.ZeroSize` _if the `size` is 0._
             pub fn initCapacity(allocator: Allocator, size: usize) initError!Self {
-                return try internal_initCapacity(Self, allocator, size);
+                return internal.initCapacity(Self, allocator, size);
+            }
+
+            /// Initializes a new empty `uString` instance.
+            /// The purpose of this function is to integrate with the internal functions.
+            pub fn initAlloc(_: Allocator) Self {
+                return Self{ };
             }
 
             /// Release all allocated memory.
-            pub fn deinit(self: *Self, allocator: Allocator) void {
+            pub fn deinit(self: Self, allocator: Allocator) void {
                 if (self.m_capacity > 0) {
                     allocator.free(self.allocatedSlice());
-                    self.* = undefined;
+                    // self.* = undefined;
                 }
             }
 
@@ -376,74 +434,66 @@
             pub const insertError       = AllocatorError || error { OutOfRange };
             pub const insertVisualError = insertError || internal.insertVisualError;
 
-            /// Inserts a `slice` into the `String` instance at the specified `position` by **real position**.
+            /// Inserts a `slice` into the `uString` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
-            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
-            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            /// Modifies the `uString` instance in place **_if `slice` length is greater than 0_.**
             pub fn insert(self: *Self, allocator: Allocator, _slice: []const u8, pos: usize) insertError!void {
                 if (_slice.len == 0) return;
                 if (pos > self.m_source.len) return insertError.OutOfRange;
                 try internal.insert(self, allocator, _slice, pos);
             }
 
-            /// Inserts a `byte` into the `String` instance at the specified `position` by **real position**.
+            /// Inserts a `byte` into the `uString` instance at the specified `position` by **real position**.
             /// - `Allocator.Error` **_if the `allocator` returned an error._**
-            /// - `.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `String` instance in place.
+            /// - `.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn insertOne(self: *Self, allocator: Allocator, byte: u8, pos: usize) insertError!void {
                 if (pos > self.m_source.len) return insertError.OutOfRange;
                 try internal.insertOne(self, allocator, byte, pos);
             }
 
-            /// Inserts a `slice` into the `String` instance at the specified `visual position`.
-            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// Inserts a `slice` into the `uString` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
             ///
-            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            /// Modifies the `uString` instance in place **_if `slice` length is greater than 0_.**
             pub fn insertVisual(self: *Self, allocator: Allocator, _slice: []const u8, pos: usize) insertVisualError!void {
                 if (pos > self.m_source.len) return insertVisualError.OutOfRange;
                 try internal.insertVisual(self, allocator, _slice, pos);
             }
 
-            /// Inserts a `byte` into the `String` instance at the specified `visual position`.
-            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// Inserts a `byte` into the `uString` instance at the specified `visual position`.
+            /// - `insertVisualError.OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             /// - `insertVisualError.InvalidPosition` **_if the `pos` is invalid._**
-            ///
-            /// Modifies the `String` instance in place.
             pub fn insertVisualOne(self: *Self, allocator: Allocator, byte: u8, pos: usize) insertVisualError!void {
                 if (pos > self.m_source.len) return insertVisualError.OutOfRange;
                 try internal.insertVisualOne(self, allocator, byte, pos);
             }
 
-            /// Appends a `slice` into the `String` instance.
+            /// Appends a `slice` into the `uString` instance.
             ///
-            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            /// Modifies the `uString` instance in place **_if `slice` length is greater than 0_.**
             pub fn append(self: *Self, allocator: Allocator, _slice: []const u8) AllocatorError!void {
-                return internal.append(self, allocator, _slice);
+                try internal.append(self, allocator, _slice);
             }
 
-            /// Appends a `byte` into the `String` instance.
-            ///
-            /// Modifies the `String` instance in place.
+            /// Appends a `byte` into the `uString` instance.
             pub fn appendOne(self: *Self, allocator: Allocator, byte: u8) AllocatorError!void {
-                return internal.appendOne(self, allocator, byte);
+                try internal.appendOne(self, allocator, byte);
             }
 
-            /// Prepends a `slice` into the `String` instance.
+            /// Prepends a `slice` into the `uString` instance.
             ///
-            /// Modifies the `String` instance in place **_if `slice` length is greater than 0_.**
+            /// Modifies the `uString` instance in place **_if `slice` length is greater than 0_.**
             pub fn prepend(self: *Self, allocator: Allocator, _slice: []const u8) AllocatorError!void {
-                if(_slice.len == 0) return;
-                return internal.insert(self, allocator, _slice, 0);
+                if(_slice.len > 0)
+                try internal.insert(self, allocator, _slice, 0);
             }
 
-            /// Prepends a `byte` into the `String` instance.
-            ///
-            /// Modifies the `String` instance in place.
+            /// Prepends a `byte` into the `uString` instance.
             pub fn prependOne(self: *Self, allocator: Allocator, byte: u8) AllocatorError!void {
-                return internal.insertOne(self, allocator, byte, 0);
+                try internal.insertOne(self, allocator, byte, 0);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -455,25 +505,21 @@
             pub const removeVisualError = internal.removeVisualError;
 
             /// Removes a byte from the `uString` instance.
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `uString` instance in place.
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn remove(self: *Self, pos: usize) removeError!void {
                 return internal.remove(self, pos);
             }
 
             /// Removes a `range` of bytes from the `uString` instance.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
-            ///
-            /// Modifies the `uString` instance in place.
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             pub fn removeRange(self: *Self, pos: usize, len: usize) removeError!void {
                 return internal.removeRange(self, pos, len);
             }
 
             /// Removes a byte from the `uString` instance by the `visual position`.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
             /// Returns the removed slice.
             pub fn removeVisual(self: *Self, pos: usize) removeVisualError![]const u8 {
@@ -482,7 +528,7 @@
 
             /// Removes a `range` of bytes from the `uString` instance by the `visual position`.
             /// - `InvalidPosition` **_if the `pos` is invalid._**
-            /// - `OutOfRange` **_if the `pos` is greater than `self.source.len`._**
+            /// - `OutOfRange` **_if the `pos` is greater than `self.m_source.len`._**
             ///
             /// Returns the removed slice.
             pub fn removeVisualRange(self: *Self, pos: usize, len: usize) removeVisualError![]const u8 {
@@ -496,7 +542,7 @@
             }
 
             /// Removes the first grapheme cluster at the `uString` instance,
-            /// Returns the number of removed bytes.
+            /// Returns the number of removed Bytes.
             pub fn shift(self: *Self) usize {
                 return internal.shift(self);
             }
@@ -512,7 +558,7 @@
             }
 
             /// Finds the `visual position` of the **first** occurrence of `target`.
-            pub fn findVisual(self: Self, target: []const u8) !?usize {
+            pub fn findVisual(self: Self, target: []const u8) ?usize {
                 return internal.findVisual(self, target);
             }
 
@@ -571,7 +617,7 @@
 
         // ┌──────────────────────────── Data ────────────────────────────┐
 
-            /// Returns the total number of written bytes.
+            /// Returns the total number of written Bytes.
             pub fn capacity(self: Self) usize {
                 return internal.capacity(self);
             }
@@ -601,10 +647,65 @@
 
         // ┌────────────────────────── Iterator ──────────────────────────┐
 
-            /// Creates an iterator for traversing the UTF-8 bytes.
+            /// Creates an iterator for traversing the unicode bytes.
             /// - `Iterator.Error` **_if the initialization failed._**
             pub fn iterator(self: Self) Iterator.Error!Iterator {
-                return try internal.iterator(self);
+                return internal.iterator(self);
+            }
+
+        // └──────────────────────────────────────────────────────────────┘
+
+
+        // ┌──────────────────────────── Split ───────────────────────────┐
+
+            /// Splits the written portion of the string into substrings separated by the delimiter,
+            /// returning the substring at the specified index.
+            pub fn split(self: Self, delimiters: []const u8, index: usize) ?[]const u8 {
+                return internal.split(self, delimiters, index);
+            }
+
+            /// Splits the written portion of the string into all substrings separated by the delimiter,
+            /// returning an array of slices. Caller must free the returned memory.
+            /// `include_empty` controls whether empty strings are included in the result.
+            pub fn splitAll(self: Self, allocator: Allocator, delimiters: []const u8, include_empty: bool) ![]const []const u8 {
+                return internal.splitAll(self, allocator, delimiters, include_empty);
+            }
+
+            /// Splits the written portion of the string into substrings separated by the delimiter,
+            /// returning the substring at the specified index as a new `uString` instance.
+            pub fn splitToString(self: Self, allocator: Allocator, delimiters: []const u8, index: usize) Allocator.Error!?Self {
+                return internal.splitToUString(Self, self, allocator, delimiters, index);
+            }
+
+            /// Splits the written portion of the string into all substrings separated by the delimiter,
+            /// returning an array of new `uString` instances. Caller must free the returned memory.
+            pub fn splitAllToStrings(self: Self, allocator: Allocator, delimiters: []const u8) Allocator.Error![]Self {
+                return internal.splitAllToUStrings(Self, self, allocator, delimiters);
+            }
+
+        // └──────────────────────────────────────────────────────────────┘
+
+
+        // ┌─────────────────────────── Replace ──────────────────────────┐
+
+            /// Replaces all occurrence of a character with another.
+            pub fn replaceAllChars(self: *Self, match: u8, replacement: u8) void {
+                return internal.replaceAllChars(self, match, replacement);
+            }
+
+            /// Replaces all occurrences of a slice with another.
+            pub fn replaceAllSlices(self: *Self, allocator: Allocator, match: []const u8, replacement: []const u8) Allocator.Error!usize {
+                return internal.replaceAllSlices(self, allocator, match, replacement);
+            }
+
+            /// Replaces a range of bytes with another.
+            pub fn replaceRange(self: anytype, allocator: Allocator, start: usize, len: usize, replacement: []const u8) Allocator.Error!void {
+                return internal.replaceRange(self, allocator, start, len, replacement);
+            }
+
+            /// Replaces a visual range of bytes with another.
+            pub fn replaceVisualRange(self: anytype, allocator: Allocator, start: usize, len: usize, replacement: []const u8) Allocator.Error!void {
+                return internal.replaceVisualRange(self, allocator, start, len, replacement);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -614,53 +715,26 @@
 
             /// Returns a copy of the `uString` instance.
             pub fn clone(self: Self, allocator: Allocator) AllocatorError!Self {
-                return internal_clone(Self, self, allocator);
+                return internal.clone(Self, self, allocator);
             }
 
-            /// Converts the `uString` to a `String`, taking ownership of the memory.
-            pub fn toManaged(self: *Self, allocator: Allocator) String {
+            /// Converts the `uString` to a `uString`, taking ownership of the memory.
+            pub fn toManaged(self: *Self, allocator: Allocator) uString {
                 return .{ .m_source = self.m_source, .m_capacity = self.m_capacity, .m_allocator = allocator };
             }
 
+            /// Returns true if the `uString` instance equals the given `target`.
+            pub fn equals(self: Self, target: []const u8) bool {
+                return internal.equals(self, target);
+            }
+
+            /// Returns true if the `uString` instance is empty.
+            pub fn isEmpty(self: Self) bool {
+                return internal.isEmpty(self);
+            }
+
         // └──────────────────────────────────────────────────────────────┘
+
     };
-
-// ╚══════════════════════════════════════════════════════════════════════════════════╝
-
-
-
-// ╔════════════════════════════════════ Internal ════════════════════════════════════╗
-
-    const internal_initError = AllocatorError || error { ZeroSize };
-
-    /// Initializes a new `String` instance with the given `allocator` and `value`.
-    /// - `internal_initError.ZeroSize` **_if the length of `value` is 0._**
-    /// - `std.mem.Allocator` **_if the allocator returned an error._**
-    inline fn internal_init(Self: type, allocator: Allocator, value: []const u8) internal_initError!Self {
-        var self = try internal_initCapacity(Self, allocator, value.len*2);
-        Bytes.unsafeAppend(self.allocatedSlice(), value, 0);
-        self.m_source.len = Bytes.countWritten(value);
-
-        return self;
-    }
-
-    /// Initializes a new `uString` instance using `allocator` and `size`.
-    /// - `internal_initError.ZeroSize` _if the `size` is 0._
-    inline fn internal_initCapacity(Self: type, allocator: Allocator, size: usize) internal_initError!Self {
-        if(size == 0) return internal_initError.ZeroSize;
-
-        var self = if(Self == String) Self{ .m_allocator = allocator } else Self{};
-        try internal.ensureCapacity(&self, allocator, size, false);
-        return self;
-    }
-
-    /// Returns a copy of the `String` instance.
-    inline fn internal_clone(Self: type, self: Self, allocator: Allocator) AllocatorError!Self {
-        var new_string = if(@typeName(Self) == String) Self{ .m_allocator = allocator } else Self{};
-        try internal.ensureUnusedCapacity(&new_string, allocator, self.m_capacity);
-        Bytes.unsafeAppend(new_string.allocatedSlice(), self.slice(), 0);
-        new_string.m_source.len = self.m_source.len;
-        return new_string;
-    }
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝

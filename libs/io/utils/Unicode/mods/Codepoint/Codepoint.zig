@@ -1,6 +1,6 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    const std = @import("std");
+    const utils = @import("../../utils/utils.zig");
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -37,12 +37,13 @@
 
         // ┌────────────────────────── Methods ───────────────────────────┐
 
-            /// Initializes a Codepoint using the given input bytes.
-            /// - `Error.InvalidValue` **_if the `slice` is not a valid utf8._**
+            /// Initializes a Codepoint using the given input Bytes.
+            /// - `Error.InvalidValue` **_if the `slice` is not a valid Unicode._**
             pub fn init(slice: []const u8) Error!Self {
-                if(!std.unicode.utf8ValidateSlice(slice)) return Error.InvalidValue;
+                if(slice.len == 0) return Error.InvalidValue;
+                if(!utils.Utf8Validate(slice)) return Error.InvalidValue;
 
-                const decoded_value = std.unicode.utf8Decode(slice) catch return Error.InvalidValue;
+                const decoded_value = utils.Utf8Decode(slice) catch return Error.InvalidValue;
                 return .{
                     .mode = if(decoded_value == 0x200d) .ZWJ else if(isModifier(decoded_value)) .Mod else .None,
                     .len = slice.len,

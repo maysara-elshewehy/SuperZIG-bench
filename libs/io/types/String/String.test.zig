@@ -1,7 +1,7 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
     const std = @import("std");
-    const utf8 = @import("../../utils/utf8/utf8.zig");
+    const Unicode = @import("../../utils/Unicode/Unicode.zig");
     const String = @import("./String.zig").String;
 
     const expect = std.testing.expect;
@@ -41,18 +41,22 @@
             // Init
             {
                 // empty input
-                const emptyUtf8: []const u8 = "";
-                try expectError(error.ZeroSize, String.init(allocator, emptyUtf8));
+                const _empty: []const u8 = "";
+                const empty = try String.init(allocator, _empty);
+                defer empty.deinit();
+                try expectEqual(_empty.len, empty.length());
+                try expectEqual(0, empty.capacity());
+                try expectStrings(_empty, empty.slice());
 
-                // non empty input (valid UTF-8)
-                const validUtf8: []const u8 = "Hello, 世界!";
-                const string = try String.init(allocator, validUtf8);
-                defer string.deinit();
-                try expectEqual(validUtf8.len, string.length());
-                try expectEqual(28, string.capacity());
-                try expectStrings(validUtf8, string.slice());
+                // non empty input (valid unicode)
+                const _nonEmpty: []const u8 = "Hello, 世界!";
+                const nonEmpty = try String.init(allocator, _nonEmpty);
+                defer nonEmpty.deinit();
+                try expectEqual(_nonEmpty.len, nonEmpty.length());
+                try expectEqual(28, nonEmpty.capacity());
+                try expectStrings(_nonEmpty, nonEmpty.slice());
 
-                // non empty input (invalid UTF-8)
+                // non empty input (invalid unicode)
                 // try expectError(unreachable, String.init(allocator, &[_]u8{0x80, 0x81, 0x82}));
             }
         }
@@ -63,17 +67,17 @@
     // ┌────────────────────────── Iterator ──────────────────────────┐
 
         test "iterator" {
-            const validUtf8: []const u8 = "Hello, 世界!";
-            var string = try String.init(allocator, validUtf8);
+            const validUnicode: []const u8 = "Hello, 世界!";
+            var string = try String.init(allocator, validUnicode);
             defer string.deinit();
             var iter = try string.iterator();
 
             while(iter.nextSlice()) |slice| {
-                try expect(utf8.utils.isValid(slice));
+                try expect(Unicode.utils.Utf8Validate(slice));
             }
 
             // Ensure all characters were iterated
-            try expectEqual(validUtf8.len, iter.current_index);
+            try expectEqual(validUnicode.len, iter.current_index);
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -626,6 +630,165 @@
 
             // size = original length *2
             try expectEqual(6, string.allocatedSlice().len);
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌─────────────────────────── Split ────────────────────────────┐
+
+        test "split" {
+            var string = try String.init(allocator, "0👨‍🏭11👨‍🏭2👨‍🏭33");
+            defer string.deinit();
+
+            // Test basic splits
+            try expectStrings("0", string.split("👨‍🏭", 0).?);
+            try expectStrings("11", string.split("👨‍🏭", 1).?);
+            try expectStrings("2", string.split("👨‍🏭", 2).?);
+            try expectStrings("33", string.split("👨‍🏭", 3).?);
+
+            // Test out-of-bounds indices
+            try expect(string.split("👨‍🏭", 4) == null);
+
+            // Test empty input
+            var string2 = String.initAlloc(allocator);
+            try expectStrings("", string2.split("👨‍🏭", 0).?);
+
+            // Test non-existent delimiter
+            try expectStrings(string.slice(), string.split("X", 0).?);
+        }
+
+        test "splitAll edge cases" {
+            // Leading/trailing delimiters
+            var string = try String.init(allocator, "👨‍🏭a👨‍🏭b👨‍🏭");
+            defer string.deinit();
+
+            const parts2 = try string.splitAll("👨‍🏭", true);
+            defer allocator.free(parts2);
+            try expectStrings("", parts2[0]);
+            try expectStrings("a", parts2[1]);
+            try expectStrings("b", parts2[2]);
+            try expectStrings("", parts2[3]);
+
+            // Test with include_empty = false
+            const parts3 = try string.splitAll("👨‍🏭", false);
+            defer allocator.free(parts3);
+            try expectStrings("a", parts3[0]);
+            try expectStrings("b", parts3[1]);
+        }
+
+        test "splitToString" {
+            var string = try String.init(allocator, "0👨‍🏭11👨‍🏭2👨‍🏭33");
+            defer string.deinit();
+
+            // Test basic splits
+            if(try string.splitToString("👨‍🏭", 0)) |res| {
+                defer res.deinit();
+                try expectStrings("0", res.slice());
+            }
+            if(try string.splitToString("👨‍🏭", 1)) |res| {
+                defer res.deinit();
+                try expectStrings("11", res.slice());
+            }
+            if(try string.splitToString("👨‍🏭", 2)) |res| {
+                defer res.deinit();
+                try expectStrings("2", res.slice());
+            }
+            if(try string.splitToString("👨‍🏭", 3)) |res| {
+                defer res.deinit();
+                try expectStrings("33", res.slice());
+            }
+
+            // Test out-of-bounds indices
+            try expect(try string.splitToString("👨‍🏭", 4) == null);
+
+            // Test empty input
+            var string2 = String.initAlloc(allocator);
+            try expectStrings("", (try string2.splitToString("👨‍🏭", 0)).?.slice());
+
+            // Test non-existent delimiter
+            if(try string.splitToString("X", 0)) |res| {
+                defer res.deinit();
+                try expectStrings(string.slice(), res.slice());
+            }
+        }
+
+        test "splitAllToStrings edge cases" {
+            // Leading/trailing delimiters
+            var string = try String.init(allocator, "👨‍🏭a👨‍🏭b👨‍🏭");
+            defer string.deinit();
+
+            const parts2 = try string.splitAllToStrings("👨‍🏭");
+            defer allocator.free(parts2);
+            try expectStrings("", parts2[0].slice());
+            try expectStrings("a", parts2[1].slice());
+            try expectStrings("b", parts2[2].slice());
+            try expectStrings("", parts2[3].slice());
+            for(0..parts2.len) |i| { defer parts2[i].deinit(); }
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌─────────────────────────── Replace ──────────────────────────┐
+
+        test "replaceAllChars" {
+            var string = try String.init(allocator, "aXb");
+            defer string.deinit();
+            string.replaceAllChars('X', 'Y');
+            try expectStrings("aYb", string.slice());
+        }
+
+        test "replaceAllSlices" {
+            var string = try String.init(allocator, "Hello 👨‍🏭!");
+            defer string.deinit();
+            const res = try string.replaceAllSlices("👨‍🏭", "World");
+            try expectStrings("Hello World!", string.slice());
+            try expectEqual(1, res);
+        }
+
+        test "replaceRange" {
+            var string = try String.init(allocator, "Hello 👨‍🏭!");
+            defer string.deinit();
+            try string.replaceRange(6, 11, "World");
+            try expectStrings("Hello World!", string.slice());
+        }
+
+        test "replaceVisualRange" {
+            var string = try String.init(allocator, "Hello 👨‍🏭!");
+            defer string.deinit();
+            try string.replaceVisualRange(6, 1, "World");
+            try expectStrings("Hello World!", string.slice());
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Utils ───────────────────────────┐
+
+        test "equals" {
+            const string1 = try String.init(allocator, "Hello, World!");
+            defer string1.deinit();
+
+            const string2 = try String.init(allocator, "Hello, World!");
+            defer string2.deinit();
+
+            const string3 = try String.init(allocator, "Goodbye, World!");
+            defer string3.deinit();
+
+            try expect(string1.equals(string2.slice()));
+            try expect(!string1.equals(string3.slice()));
+        }
+
+        test "isEmpty" {
+            const empty = try String.init(allocator, "");
+            defer empty.deinit();
+
+            const nonEmpty = try String.init(allocator, "Hello, World!");
+            defer nonEmpty.deinit();
+
+            try expect(empty.isEmpty());
+            try expect(!nonEmpty.isEmpty());
         }
 
     // └──────────────────────────────────────────────────────────────┘

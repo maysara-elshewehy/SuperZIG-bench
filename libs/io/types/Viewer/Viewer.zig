@@ -1,7 +1,10 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    pub const utf8 = @import("../../utils/utf8/utf8.zig");
-    pub const Bytes = @import("../../utils/bytes/bytes.zig");
+    const std = @import("std");
+    const Unicode = @import("../../utils/Unicode/Unicode.zig");
+    const Bytes = @import("../../utils/Bytes/Bytes.zig");
+    const Allocator = std.mem.Allocator;
+    pub const AllocatorError = Allocator.Error;
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -9,7 +12,7 @@
 
 // ╔══════════════════════════════════════ CORE ══════════════════════════════════════╗
 
-    /// Immutable fixed utf8 string type.
+    /// Immutable fixed-size string type that supports Unicode.
     pub const Viewer = struct {
 
         // ┌──────────────────────────── ---- ────────────────────────────┐
@@ -21,21 +24,19 @@
 
         // ┌─────────────────────────── Fields ───────────────────────────┐
 
-            /// The UTF-8 encoded bytes to be viewed.
-            m_source: []const u8,
+            /// The unicode encoded bytes to be viewed.
+            m_source: []const u8 = &.{},
 
         // └──────────────────────────────────────────────────────────────┘
 
 
         // ┌─────────────────────── Initialization ───────────────────────┐
 
-            /// Initializes a new `Viewer` instance with the given UTF-8 bytes.
-            /// - `initError.ZeroSize` **_if the length of `value` is 0._**
-            pub fn init(value: []const u8) initError!Self {
-                if(value.len == 0) return initError.ZeroSize;
+            /// Initializes a new `Viewer` instance with the given unicode bytes.
+            pub fn init(value: []const u8) Self {
+                if(value.len == 0) return Self { };
                 return Self{ .m_source = value[0..Bytes.countWritten(value)] };
             }
-            pub const initError = error { ZeroSize };
 
         // └──────────────────────────────────────────────────────────────┘
 
@@ -48,7 +49,7 @@
             }
 
             /// Finds the `visual position` of the **first** occurrence of `target`.
-            pub fn findVisual(self: Self, target: []const u8) !?usize {
+            pub fn findVisual(self: Self, target: []const u8) ?usize {
                 return Bytes.findVisual(self.slice(), target);
             }
 
@@ -88,8 +89,13 @@
             }
 
             /// Returns the total number of visual characters.
-            pub fn countVisual(self: Self) usize {
-                return Bytes.countVisual(self.m_source[0..self.m_source.len]) catch unreachable;
+            pub fn vlength(self: Self) usize {
+                return if(self.m_source.len == 0) 0 else Bytes.countVisual(self.m_source[0..]) catch unreachable;
+            }
+
+            /// Returns a slice containing only the written part.
+            pub fn slice(self: Self) []const u8 {
+                return if(self.m_source.len == 0) "" else self.m_source[0..];
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -97,12 +103,28 @@
 
         // ┌────────────────────────── Iterator ──────────────────────────┐
 
-            /// Creates an iterator for traversing the UTF-8 bytes.
-            pub fn iterator(self: Self) utf8.Iterator {
-                // why Unchecked version ?
-                // because we already checked the validity of the input bytes
-                // when we initialized this instance of the `Viewer` struct.
-                return utf8.Iterator.unsafeInit(self.m_source);
+            /// Creates an iterator for traversing the unicode bytes.
+            /// - `Unicode.Iterator.Error` **_if the initialization failed._**
+            pub fn iterator(self: Self) Unicode.Iterator.Error!Unicode.Iterator {
+                return Unicode.Iterator.init(self.slice());
+            }
+
+        // └──────────────────────────────────────────────────────────────┘
+
+
+        // ┌──────────────────────────── Split ───────────────────────────┐
+
+            /// Splits the written portion of the string into substrings separated by the delimiter,
+            /// returning the substring at the specified index.
+            pub fn split(self: Self, delimiters: []const u8, index: usize) ?[]const u8 {
+                return Bytes.split(self.slice(), self.length(), delimiters, index);
+            }
+
+            /// Splits the written portion of the string into all substrings separated by the delimiter,
+            /// returning an array of slices. Caller must free the returned memory.
+            /// `include_empty` controls whether empty strings are included in the result.
+            pub fn splitAll(self: Self, allocator: Allocator, delimiters: []const u8, include_empty: bool) AllocatorError![]const []const u8 {
+                return Bytes.splitAll(allocator, self.slice(), self.length(), delimiters, include_empty);
             }
 
         // └──────────────────────────────────────────────────────────────┘
@@ -110,9 +132,19 @@
 
         // ┌──────────────────────────── Utils ───────────────────────────┐
 
-            /// Returns a slice containing only the written part.
-            pub fn slice(self: Self) []const u8 {
-                return if(self.m_source.len > 0 ) self.m_source[0..self.m_source.len] else "";
+            /// Returns a copy of the `Viewer` instance.
+            pub fn clone(self: Self) Self {
+                return .{ .m_source = self.m_source };
+            }
+
+            /// Returns true if the `Viewer` instance equals the given `target`.
+            pub fn equals(self: Self, target: []const u8) bool {
+                return Bytes.equals(self.slice(), target);
+            }
+
+            /// Returns true if the `Viewer` instance is empty.
+            pub fn isEmpty(self: Self) bool {
+                return Bytes.isEmpty(self.slice());
             }
 
         // └──────────────────────────────────────────────────────────────┘

@@ -1,7 +1,7 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
     const std = @import("std");
-    const Bytes = @import("./bytes.zig");
+    const Bytes = @import("./Bytes.zig");
 
     const assert = std.debug.assert;
     const expect = std.testing.expect;
@@ -37,7 +37,7 @@
         test "init" {
             // Success Cases.
             {
-                // Array of bytes.
+                // Array of Bytes.
                 const multi_elem_arr = try Bytes.init(3, "012");
                 try expect(multi_elem_arr.len == 3);
                 for(0..3) |i| try expect(multi_elem_arr[i] == "012"[i]);
@@ -547,10 +547,16 @@
             try expectStrings("Hello 👨‍🏭!", &array);
         }
 
+        test "reverse" {
+            var array = try Bytes.init(5, "Hello");
+            Bytes.reverse(array[0..5]);
+            try expectStrings("olleH", &array);
+        }
+
     // └──────────────────────────────────────────────────────────────┘
 
 
-    // ┌──────────────────────────── Utils ───────────────────────────┐
+    // ┌──────────────────────────── DATA ────────────────────────────┐
 
         test "countWritten" {
             const cases = .{ .{ "", 0 }, .{ "A", 1 }, .{ "🌟", 4 }, .{ "👨‍🏭", 11 }, };
@@ -559,8 +565,8 @@
                 try expectEqual(c[1], Bytes.countWritten(c[0]));
             }
 
-            const myArray = try Bytes.init(64, "Hello 👨‍🏭!");
-            try expectEqual(18, Bytes.countWritten(&myArray));
+            const array = try Bytes.init(64, "Hello 👨‍🏭!");
+            try expectEqual(18, Bytes.countWritten(&array));
         }
 
         test "countVisual" {
@@ -570,14 +576,169 @@
                 try expectEqual(c[1], try Bytes.countVisual(c[0]));
             }
 
-            const myArray = try Bytes.init(64, "Hello 👨‍🏭!");
-            try expectEqual(8, try Bytes.countVisual(&myArray));
+            const array = try Bytes.init(64, "Hello 👨‍🏭!");
+            try expectEqual(8, try Bytes.countVisual(&array));
         }
 
         test "writtenSlice" {
-            const myArray = try Bytes.init(64, "Hello 🌍!");
-            try expectStrings("Hello 🌍!", Bytes.writtenSlice(&myArray));
+            const array = try Bytes.init(64, "Hello 🌍!");
+            try expectStrings("Hello 🌍!", Bytes.writtenSlice(&array));
         }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Split ───────────────────────────┐
+
+        test "split" {
+            const input = "0👨‍🏭11👨‍🏭2👨‍🏭33";
+            const array = try Bytes.init(64, input);
+
+            // Test basic splits
+            try expectStrings("0", Bytes.split(&array, input.len, "👨‍🏭", 0).?);
+            try expectStrings("11", Bytes.split(&array, input.len, "👨‍🏭", 1).?);
+            try expectStrings("2", Bytes.split(&array, input.len, "👨‍🏭", 2).?);
+            try expectStrings("33", Bytes.split(&array, input.len, "👨‍🏭", 3).?);
+
+            // Test out-of-bounds indices
+            try expect(Bytes.split(&array, input.len, "👨‍🏭", 4) == null);
+
+            // Test empty input
+            try expectStrings("", Bytes.split(&array, 0, "👨‍🏭", 0).?);
+
+            // Test non-existent delimiter
+            try expectStrings(input, Bytes.split(&array, input.len, "X", 0).?);
+        }
+
+        test "splitAll" {
+            const allocator = std.testing.allocator;
+
+            // Consecutive delimiters
+            const input1 = "a👨‍🏭👨‍🏭b";
+            const parts1 = try Bytes.splitAll(allocator, input1, input1.len, "👨‍🏭", true);
+            defer allocator.free(parts1);
+            try expectStrings("a", parts1[0]);
+            try expectStrings("", parts1[1]);
+            try expectStrings("b", parts1[2]);
+
+            // Leading/trailing delimiters
+            const input2 = "👨‍🏭a👨‍🏭b👨‍🏭";
+            const parts2 = try Bytes.splitAll(allocator, input2, input2.len, "👨‍🏭", true);
+            defer allocator.free(parts2);
+            try expectStrings("", parts2[0]);
+            try expectStrings("a", parts2[1]);
+            try expectStrings("b", parts2[2]);
+            try expectStrings("", parts2[3]);
+
+            // No delimiters
+            const input3 = "hello";
+            const parts3 = try Bytes.splitAll(allocator, input3, input3.len, "👨‍🏭", true);
+            defer allocator.free(parts3);
+            try expectStrings("hello", parts3[0]);
+
+            // Empty input
+            const parts4 = try Bytes.splitAll(allocator, "", 0, "👨‍🏭", true);
+            defer allocator.free(parts4);
+            try expectStrings("", parts4[0]);
+        }
+
+        test "splitAll edge cases" {
+            const allocator = std.testing.allocator;
+
+            // Leading/trailing delimiters
+            const input2 = "👨‍🏭a👨‍🏭b👨‍🏭";
+            const parts2 = try Bytes.splitAll(allocator, input2, input2.len, "👨‍🏭", true);
+            defer allocator.free(parts2);
+            try expectStrings("", parts2[0]);
+            try expectStrings("a", parts2[1]);
+            try expectStrings("b", parts2[2]);
+            try expectStrings("", parts2[3]);
+
+            // Test with include_empty = false
+            const parts3 = try Bytes.splitAll(allocator, input2, input2.len, "👨‍🏭", false);
+            defer allocator.free(parts3);
+            try expectStrings("a", parts3[0]);
+            try expectStrings("b", parts3[1]);
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌─────────────────────────── Replace ──────────────────────────┐
+
+        test "replaceAllChars" {
+            var array = try Bytes.init(64, "aXb");
+            Bytes.replaceAllChars(&array, 'X', 'Y');
+            try expectStrings("aYb", array[0..3]);
+        }
+
+        test "replaceAllSlices" {
+            var array = try Bytes.init(18, "Hello 👨‍🏭!");
+            const res = try Bytes.replaceAllSlices(&array, "👨‍🏭", "World");
+            try expectStrings("Hello World!", array[0..12]);
+            try expectEqual(1, res);
+
+            // OutOfRange
+            var array2 = try Bytes.init(3, "aXb");
+            try expectError(error.OutOfRange, Bytes.replaceAllSlices(&array2, "X", "YYY"));
+        }
+
+        test "replaceRange" {
+            // Case 1: Replacement of same length
+            var array1 = try Bytes.init(64, "Hello 👨‍🏭!");
+            try Bytes.replaceRange(&array1, 18, 6, 11, "World");
+            try expectStrings("Hello World!", array1[0..12]);
+
+            // Case 2: Replacement is shorter than the original range
+            var array2 = try Bytes.init(64, "Hello ZigLang!");
+            try Bytes.replaceRange(&array2, 14, 6, 7, "Zig");
+            try expectStrings("Hello Zig!", array2[0..10]);
+
+            // Case 3: Replacement is longer than the original range
+            var array3 = try Bytes.init(64, "Hello World!");
+            try Bytes.replaceRange(&array3, 12, 6, 5, "Beautiful World");
+            try expectStrings("Hello Beautiful World!", array3[0..22]);
+
+            // Case 4: Replace at the start
+            var array4 = try Bytes.init(18, "1234567890");
+            try Bytes.replaceRange(&array4, 10, 0, 3, "ABC");
+            try expectStrings("ABC4567890", array4[0..10]);
+
+            // Case 5: Replace at the end
+            var array5 = try Bytes.init(18, "abcdef123456");
+            try Bytes.replaceRange(&array5, 12, 6, 6, "XYZ");
+            try expectStrings("abcdefXYZ", array5[0..9]);
+
+            // Case 6: Replace full string
+            var array6 = try Bytes.init(18, "Replace Me!");
+            try Bytes.replaceRange(&array6, 11, 0, 11, "Done");
+            try expectStrings("Done", array6[0..4]);
+
+            // Case 7: Replacement is empty (removal)
+            var array7 = try Bytes.init(18, "DeleteThis");
+            try Bytes.replaceRange(&array7, 10, 6, 4, "");
+            try expectStrings("Delete", array7[0..6]);
+
+            // Case 8: Inserting a string (replace empty range)
+            var array8 = try Bytes.init(18, "Hello!");
+            try Bytes.replaceRange(&array8, 6, 5, 0, " World");
+            try expectStrings("Hello World!", array8[0..12]);
+
+            // Case 9: OutOfRange
+            var array9 = try Bytes.init(3, "aXb");
+            try expectError(error.OutOfRange, Bytes.replaceRange(&array9, 3, 0, 3, "YYYY"));
+        }
+
+        test "replaceVisualRange" {
+            var array1 = try Bytes.init(18, "Hello 👨‍🏭!");
+            try Bytes.replaceVisualRange(&array1, 18, 6, 1, "World");
+            try expectStrings("Hello World!", array1[0..12]);
+        }
+
+    // └──────────────────────────────────────────────────────────────┘
+
+
+    // ┌──────────────────────────── Utils ───────────────────────────┐
 
         test "isByte" {
             // True cases.
@@ -611,10 +772,23 @@
             try expect(!Bytes.isBytes(&[_]u7{0}));
         }
 
-        test "reverse" {
-            var array = try Bytes.init(5, "Hello");
-            Bytes.reverse(array[0..5]);
-            try expectStrings("olleH", &array);
+        test "equals" {
+            // Case 1: Empty strings
+            try expect(Bytes.equals("", ""));
+            try expect(!Bytes.equals("", "a"));
+
+            // Case 2: Strings with only one element
+            try expect(Bytes.equals("a", "a"));
+            try expect(!Bytes.equals("a", "b"));
+
+            // Case 3: Strings with multiple elements
+            try expect(Bytes.equals("abc", "abc"));
+            try expect(!Bytes.equals("abc", "abcd"));
+        }
+
+        test "isEmpty" {
+            try expect(Bytes.isEmpty(""));
+            try expect(!Bytes.isEmpty("a"));
         }
 
     // └──────────────────────────────────────────────────────────────┘

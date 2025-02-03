@@ -1,7 +1,7 @@
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
     const std = @import("std");
-    const Bytes = @import("../../bytes/bytes.zig");
+    const Bytes = @import("../../Bytes/Bytes.zig");
     const utils = @import("./utils.zig");
 
     const expect = std.testing.expect;
