@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SuperZIG All rights reserved.
 //
 // repo: https://github.com/Super-ZIG/io
-// docs: https://super-zig.github.io/io/String/
+// docs: https://super-zig.github.io/io/string/
 //
 // Made with ❤️ by Maysara
 //
@@ -17,6 +17,8 @@
     const Allocator             = common.Allocator;
     pub const utils             = common.utils;
     pub const Iterator          = utils.unicode.Iterator;
+    pub const RangeError        = common.RangeError;
+    pub const CapacityError     = common.CapacityError;
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -58,7 +60,7 @@
             /// Initializes a `Viewer` instance with anytype.
             /// the value will be converted to a string if necessary.
             /// - `error.OutOfMemory` **if the buffer is not big enough.**
-            pub fn init(initial_value: anytype) error{OutOfMemory}!Viewer {
+            pub fn init(initial_value: anytype) !Viewer {
                 if(utils.bytes.isBytes(initial_value)) return Viewer.initWithSlice(initial_value)
                 else if(@TypeOf(initial_value) == Viewer) return Viewer.initWithSelf(initial_value)
                 else @panic("Initialization error: Viewer type only supports slice values. Non-slice data cannot be used for initialization.");
@@ -87,6 +89,11 @@
             /// Returns a slice containing only the written part of the `Viewer`.
             pub inline fn src(self: Viewer) []const u8 {
                 return if(self.len() > 0) self.m_src[0..self.len()] else "";
+            }
+
+            /// Returns a sub-slice of the `Viewer`.
+            pub inline fn sub(self: Viewer, start: usize, end: usize) RangeError![]const u8 {
+                return common.sub(self, start, end);
             }
 
             /// Returns a character at the specified index.
@@ -281,14 +288,14 @@
 
             /// Initializes a `Buffer` instance with a formatted string.
             /// - `error.OutOfMemory` **if the buffer is not big enough.**
-            pub fn initWithFmt(comptime fmt: []const u8, args: anytype) error{OutOfMemory}!Self {
+            pub fn initWithFmt(comptime fmt: []const u8, args: anytype) CapacityError!Self {
                 return makeBufferAndFillWithFmt(fmt, args);
             }
 
             /// Initializes a `Buffer` instance with anytype.
             /// the value will be converted to a string if necessary.
             /// - `error.OutOfMemory` **if the buffer is not big enough.**
-            pub fn init(initial_value: anytype) error{OutOfMemory}!Self {
+            pub fn init(initial_value: anytype) CapacityError!Self {
                 if(utils.bytes.isByte(initial_value)) return Self.initWithByte(initial_value)
                 else if(utils.bytes.isBytes(initial_value)) return Self.initWithSlice(initial_value)
                 else if(@TypeOf(initial_value) == Self) return Self.initWithSelf(initial_value)
@@ -318,6 +325,11 @@
             /// Returns a slice containing only the written part of the `Buffer`.
             pub inline fn src(self: Self) []const u8 {
                 return if(self.m_len > 0) self.m_src[0..self.m_len] else "";
+            }
+
+            /// Returns a sub-slice of the `Buffer`.
+            pub inline fn sub(self: Self, start: usize, end: usize) RangeError![]const u8 {
+                return common.sub(self, start, end);
             }
 
             /// Returns a character at the specified index.
@@ -722,7 +734,7 @@
 
             /// Splits the written portion of the `Buffer` into substrings separated by the specified delimiters,
             /// returning the substring at the specified index as a new `Buffer` instance.
-            pub fn splitToSelf(self: Self, delimiters: []const u8, index: usize) error{OutOfMemory}!?Self {
+            pub fn splitToSelf(self: Self, delimiters: []const u8, index: usize) CapacityError!?Self {
                 if (self.split(delimiters, index)) |block| {
                     if(block.len > initial_size) return error.OutOfMemory;
                     const s = Self.initWithSlice(block);
@@ -790,7 +802,7 @@
                 return buffer;
             }
 
-            inline fn makeBufferAndFillWithFmt(comptime fmt: []const u8, args: anytype) error{OutOfMemory}!Self {
+            inline fn makeBufferAndFillWithFmt(comptime fmt: []const u8, args: anytype) CapacityError!Self {
                 const TI = @typeInfo(@TypeOf(args));
                 const new_fmt = if(fmt.len > 0) fmt else if(TI == .@"struct" or TI == .@"array") "{any}" else "{}";
                 const new_args = if(fmt.len > 0) args else .{ args };
@@ -924,6 +936,11 @@
             /// Returns a slice containing only the written part of the `uString`.
             pub inline fn src(self: uString) []const u8 {
                 return if(self.len() > 0) self.m_src[0..self.len()] else "";
+            }
+
+            /// Returns a sub-slice of the `uString`.
+            pub inline fn sub(self: uString, start: usize, end: usize) RangeError![]const u8 {
+                return common.sub(self, start, end);
             }
 
             /// Returns a character at the specified index.
@@ -1417,6 +1434,11 @@
                 return .{ .m_src = self.m_src, .m_len = self.m_len, .m_alloc = allocator };
             }
 
+            /// Converts the `uString` instance to a `Viewer`.
+            pub fn toViewer(self: uString) Viewer {
+                return Viewer.initWithSlice(self.src());
+            }
+
         // └──────────────────────────────────────────────────────────────┘
 
     };
@@ -1533,6 +1555,11 @@
             /// Returns a slice containing only the written part of the `String`.
             pub inline fn src(self: String) []const u8 {
                 return if(self.len() > 0) self.m_src[0..self.len()] else "";
+            }
+
+            /// Returns a sub-slice of the `String`.
+            pub inline fn sub(self: String, start: usize, end: usize) RangeError![]const u8 {
+                return common.sub(self, start, end);
             }
 
             /// Returns a slice representing the entire allocated memory range.
@@ -2040,6 +2067,11 @@
                 const result: uString = .{ .m_src = self.m_src, .m_len = self.m_len };
                 self.* = initWithAllocator(allocator) catch unreachable;
                 return result;
+            }
+
+            /// Converts the `String` instance to a `Viewer`.
+            pub fn toViewer(self: String) Viewer {
+                return Viewer.initWithSlice(self.src());
             }
 
         // └──────────────────────────────────────────────────────────────┘

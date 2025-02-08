@@ -11,10 +11,10 @@
 
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    const std               = @import("std");
-    const unicode           = @import("../unicode/unicode.zig");
-    pub const Allocator     = std.mem.Allocator;
-    pub const CapacityError = error { OutOfMemory, };
+    const std                   = @import("std");
+    const unicode               = @import("../unicode/unicode.zig");
+    pub const Allocator         = std.mem.Allocator;
+    pub const CapacityError     = error { OutOfMemory };
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 

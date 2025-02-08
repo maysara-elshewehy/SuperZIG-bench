@@ -218,7 +218,7 @@
             try expectEqual("!👨‍🏭@👨‍🏭#".len, iter.current_index);
         }
 
-        test "Viewer.charAt and Viewer.atVisual" {
+        test "Viewer.charAt and Viewer.atVisual and Viewer.sub" {
             var s = Viewer.initWithSlice("!👨‍🏭@👨‍🏭#");
 
             try expectEqual('!',  s.charAt(0).?);
@@ -232,6 +232,8 @@
             try expectStrings("👨‍🏭",  s.atVisual(3).?);
             try expectStrings("#",  s.atVisual(4).?);
             try expectEqual(null, s.atVisual(5));
+
+            try expectStrings("👨‍🏭", try s.sub(1, 12));
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -1439,7 +1441,7 @@
             try expectEqual("!👨‍🏭@👨‍🏭#".len, iter.current_index);
         }
 
-        test "Buffer.charAt and Buffer.atVisual" {
+        test "Buffer.charAt and Buffer.atVisual and Buffer.sub" {
             var s = Buffer(64).initWithSlice("!👨‍🏭@👨‍🏭#");
 
             try expectEqual('!',  s.charAt(0).?);
@@ -1453,6 +1455,8 @@
             try expectStrings("👨‍🏭",  s.atVisual(3).?);
             try expectStrings("#",  s.atVisual(4).?);
             try expectEqual(null, s.atVisual(5));
+
+            try expectStrings("👨‍🏭", try s.sub(1, 12));
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -2721,7 +2725,7 @@
             try expectEqual("!👨‍🏭@👨‍🏭#".len, iter.current_index);
         }
 
-        test "uString.charAt and Buffer.atVisual" {
+        test "uString.charAt and uString.atVisual and uString.sub and uString.toViewer" {
             var s = try uString.initWithSlice(Allocator, "!👨‍🏭@👨‍🏭#");
             defer s.deinit(Allocator);
 
@@ -2736,6 +2740,11 @@
             try expectStrings("👨‍🏭",  s.atVisual(3).?);
             try expectStrings("#",  s.atVisual(4).?);
             try expectEqual(null, s.atVisual(5));
+
+            try expectStrings("👨‍🏭", try s.sub(1, 12));
+
+            const v = s.toViewer();
+            try expectStrings(s.src(), v.src());
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -4126,7 +4135,7 @@
             try expectEqual("!👨‍🏭@👨‍🏭#".len, iter.current_index);
         }
 
-        test "String.charAt and Buffer.atVisual" {
+        test "String.charAt and String.atVisual and String.sub and String.toViewer" {
             var s = try String.initWithSlice(Allocator, "!👨‍🏭@👨‍🏭#");
             defer s.deinit();
 
@@ -4141,6 +4150,11 @@
             try expectStrings("👨‍🏭",  s.atVisual(3).?);
             try expectStrings("#",  s.atVisual(4).?);
             try expectEqual(null, s.atVisual(5));
+
+            try expectStrings("👨‍🏭", try s.sub(1, 12));
+
+            const v = s.toViewer();
+            try expectStrings(s.src(), v.src());
         }
 
     // └──────────────────────────────────────────────────────────────┘

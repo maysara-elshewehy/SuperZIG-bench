@@ -1,7 +1,7 @@
 // Copyright (c) 2025 SuperZIG All rights reserved.
 //
 // repo: https://github.com/Super-ZIG/io
-// docs: https://super-zig.github.io/io/String/
+// docs: https://super-zig.github.io/io/string/
 //
 // Made with ❤️ by Maysara
 //

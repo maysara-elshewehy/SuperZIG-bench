@@ -15,9 +15,11 @@
 
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    pub const std           = @import("std");
-    pub const utils         = @import("./utils/utils.zig");
-    pub const Allocator     = std.mem.Allocator;
+    pub const std               = @import("std");
+    pub const utils             = @import("./utils/utils.zig");
+    pub const Allocator         = std.mem.Allocator;
+    pub const RangeError        = error { OutOfRange };
+    pub const CapacityError     = error { OutOfMemory };
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -127,6 +129,12 @@
             const index = if(visual_pos == 0) 0 else utils.unicode.getRealPosition(self.src(), visual_pos) catch return null;
             const gc = utils.unicode.getFirstGraphemeClusterSlice(self.m_src[index..self.m_len]) orelse return null;
             return self.m_src[index..index+gc.len];
+        }
+
+        /// Returns a sub-slice of the `Self`.
+        pub inline fn sub(self: anytype, start: usize, end: usize) RangeError![]const u8 {
+            if(start > end or end > self.len()) return RangeError.OutOfRange;
+            return self.m_src[start..end];
         }
 
     // └──────────────────────────────────────────────────────────────┘
@@ -541,7 +549,7 @@
         /// Adjust the list length to `new_len`.
         /// Additional elements contain the value `undefined`.
         /// Invalidates element pointers if additional memory is needed.
-        pub fn resize(Self: type, self: anytype, allocator: Allocator, new_len: usize) Allocator.Error!void {
+        pub inline fn resize(Self: type, self: anytype, allocator: Allocator, new_len: usize) Allocator.Error!void {
             if (new_len > self.size()) {
                 try ensureCapacity(self, allocator, new_len);
                 @memset(self.m_src[self.m_len..][0..new_len-self.m_len], 0);
