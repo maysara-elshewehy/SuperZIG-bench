@@ -1,9 +1,22 @@
+// Copyright (c) 2025 SuperZIG All rights reserved.
+//
+// repo: https://github.com/Super-ZIG/io
+// docs: https://super-zig.github.io/io/String/
+//
+// Made with ❤️ by Maysara
+//
+// maysara.elshewehy@gmail.com.
+// https://github.com/maysara-elshewehy
+
+
+
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    pub const Iterator = @import("./mods/Iterator/Iterator.zig").Iterator;
-    pub const Codepoint = @import("./mods/Codepoint/Codepoint.zig").Codepoint;
+    /// A set of useful functions for working with bytes.
+    pub const bytes = @import("./bytes/bytes.zig");
 
-    pub const utils = @import("./utils/utils.zig");
+    /// A set of useful functions for working with unicode.
+    pub const unicode = @import("./unicode/unicode.zig");
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -12,9 +25,8 @@
 // ╔══════════════════════════════════════ TEST ══════════════════════════════════════╗
 
     test {
-        _ = @import("./mods/Codepoint/Codepoint.test.zig");
-        _ = @import("./mods/Iterator/Iterator.test.zig");
-        _ = @import("./utils/utils.test.zig");
+        _ = @import("./bytes/test.zig");
+        _ = @import("./unicode/test.zig");
     }
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
