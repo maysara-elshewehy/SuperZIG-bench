@@ -4,5 +4,5 @@
 
 | Benchmark                                                                       | Winner                       |
 | ------------------------------------------------------------------------------- | ---------------------------- |
-| [`io.String vs std.ArrayList`](https://super-zig.github.io/io/String/)          | Same speed.                  |
-| [`io.String vs @JakubSzark/zig-string`](https://super-zig.github.io/io/String/) | `SuperZIG` **488x Faster ⚡** |
+| [`io.String vs std.ArrayList`](https://super-zig.github.io/io/string/)          | Same speed.                  |
+| [`io.String vs @JakubSzark/zig-string`](https://super-zig.github.io/io/string/) | `SuperZIG` **488x Faster ⚡** |
