@@ -1,7 +1,8 @@
 // Copyright (c) 2025 SuperZIG All rights reserved.
 //
-// repo: https://github.com/Super-ZIG/io
-// docs: https://super-zig.github.io/io/string/
+// main repo: https://github.com/Super-ZIG/io
+// benchmark repo: https://github.com/maysara-elshewehy/io-bench
+// docs website: https://super-zig.github.io/io/
 //
 // Made with ❤️ by Maysara
 //
@@ -12,11 +13,12 @@
 
 // ╔══════════════════════════════════════ INIT ══════════════════════════════════════╗
 
-    /// A set of useful functions for working with bytes.
-    pub const bytes = @import("./bytes/bytes.zig");
-
-    /// A set of useful functions for working with unicode.
-    pub const unicode = @import("./unicode/unicode.zig");
+    const StringModule      = @import("./string/string.zig");
+    pub const chars         = StringModule.utils.chars;
+    pub const Viewer        = StringModule.Viewer;
+    pub const Buffer        = StringModule.Buffer;
+    pub const String        = StringModule.String;
+    pub const uString       = StringModule.uString;
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝
 
@@ -24,9 +26,8 @@
 
 // ╔══════════════════════════════════════ TEST ══════════════════════════════════════╗
 
-    test {
-        _ = @import("./bytes/test.zig");
-        _ = @import("./unicode/test.zig");
+    test "String" {
+        _ = @import("./string/test.zig");
     }
 
 // ╚══════════════════════════════════════════════════════════════════════════════════╝

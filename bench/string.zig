@@ -1,5 +1,7 @@
+// run using `zig run ./bench/string.zig -O ReleaseFast`
+
 const std = @import("std");
-const str = @import("./libs/io/io.zig").String;
+const String = @import("./libs/io/io.zig").String(u8);
 const zstr = @import("./libs/zig-string/zig-string.zig").String;
 const zbench = @import("./libs/zbench//zbench.zig");
 const Allocator = std.mem.Allocator;
@@ -18,7 +20,7 @@ fn ZigStringBench(allocator: Allocator, comptime num: usize) void {
 }
 
 fn StringBench(allocator: Allocator, comptime num: usize) void {
-    var string = str.initEmpty(allocator) catch @panic("Error"); defer string.deinit();
+    var string = String.initEmpty(allocator) catch @panic("Error"); defer string.deinit();
     for (0..num) |_| string.appendSlice(long_str[0..]) catch @panic("Error");
 }
 
